@@ -295,6 +295,46 @@ impl Method {
             _ => None,
         }
     }
+
+    #[allow(dead_code)]
+    pub fn is_stream_cipher(&self) -> bool {
+        matches!(
+            self,
+            Self::Aes128Ctr
+                | Self::Aes192Ctr
+                | Self::Aes256Ctr
+                | Self::Aes128Cfb
+                | Self::Aes192Cfb
+                | Self::Aes256Cfb
+                | Self::Camellia128Cfb
+                | Self::Camellia192Cfb
+                | Self::Camellia256Cfb
+                | Self::Chacha20
+                | Self::Chacha20Ietf
+                | Self::BfCfb
+                | Self::Salsa20
+                | Self::Rc4Md5
+        )
+    }
+
+    #[allow(dead_code)]
+    pub fn is_aead_cipher(&self) -> bool {
+        matches!(
+            self,
+            Self::AeadChacha20Poly1305 | Self::AeadAes256Gcm | Self::AeadAes128Gcm
+        )
+    }
+
+    #[allow(dead_code)]
+    pub fn is_aead_2022_cipher(&self) -> bool {
+        matches!(
+            self,
+            Self::Ss2022Blake3Aes128Gcm
+                | Self::Ss2022Blake3Aes256Gcm
+                | Self::Ss2022Blake3Chacha20Poly1305
+                | Self::Ss2022Blake3Chacha8Poly1305
+        )
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

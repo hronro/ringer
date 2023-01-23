@@ -1,0 +1,96 @@
+name: Build Executables On Push
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-gnu
+          - aarch64-unknown-linux-musl
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@1.66
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Cross
+        run: cargo install cross
+
+      - name: Build ${{ matrix.target }}
+        timeout-minutes: 60
+        run: cross build --target ${{ matrix.target }} --release
+
+      - name: Make Tarball
+        run: |
+          mv target/${{ matrix.target }}/release/ringer ringer
+          XZ_OPT=-e9 tar caf ringer.${{ matrix.target }}.tar.xz ringer
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.target }}
+          path: ringer.${{ matrix.target }}.tar.xz
+
+  build-macOS:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install GNU tar
+        run: |
+          brew install gnu-tar
+          echo "/usr/local/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@1.66
+
+      - name: Build
+        timeout-minutes: 60
+        run: cargo build --release
+
+      - name: Make Tarball
+        run: |
+          mv target/release/ringer ringer
+          XZ_OPT=-e9 tar caf ringer.x86_64-apple-darwin.tar.xz ringer
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: x86_64-apple-darwin
+          path: ringer.x86_64-apple-darwin.tar.xz
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@1.66
+
+      - name: Build
+        timeout-minutes: 60
+        run: cargo build --release
+
+      - name: Make Tarball
+        run: |
+          mv target/release/ringer.exe ringer.exe
+          7z a -t7z -mx=9 ringer.x86_64-pc-windows-msvc.7z ringer.exe
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: x86_64-pc-windows-msvc
+          path: ringer.x86_64-pc-windows-msvc.7z

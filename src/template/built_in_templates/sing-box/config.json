@@ -1,0 +1,56 @@
+{
+    "dns": {
+        "servers": [
+            {
+                "tag": "direct",
+                "address": "192.168.100.1",
+                "detour": "direct-out"
+            },
+            {
+                "tag": "proxy",
+                "address": "8.8.8.8",
+                "detour": "proxy-out"
+            }
+        ],
+        "rules": [
+            {
+                "geosite": "geolocation-!cn",
+                "server": "proxy"
+            }
+        ]
+    },
+    "inbounds": [
+        {
+            "type": "socks",
+            "tag": "socks-in",
+            "listen": "::",
+            "listen_port": 1080,
+            "tcp_fast_open": true,
+            "sniff": true
+        },
+        {
+            "type": "http",
+            "tag": "http-in",
+            "listen": "::",
+            "listen_port": 8080,
+            "tcp_fast_open": true,
+            "sniff": true
+        }
+    ],
+    "outbounds": [
+        {
+            "type": "selector",
+            "tag": "proxy-out",
+            "outbounds": {{ ["direct-out"] | concat(with = get_nodes_names()) | json_encode }}
+        },
+        {
+            "type": "direct",
+            "tag": "direct-out",
+            "tcp_fast_open": true
+        },
+{{
+    get_nodes(type = "sing-box", include_array_brackets = false)
+        | insert_indent(spaces = 6, include_first_line = true)
+}}
+    ]
+}

@@ -90,6 +90,11 @@ impl Adaptor for SingBox {
         options: super::NodesSerializationOptions,
     ) -> String {
         let nodes: Vec<_> = nodes.collect();
+        
+        if nodes.is_empty() {
+            return String::from("");
+        }
+
         let mut output = to_string_pretty(&nodes).unwrap();
 
         if options.include_array_brackets {

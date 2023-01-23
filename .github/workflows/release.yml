@@ -1,15 +1,18 @@
-name: Build Executables On Push
+name: Build Releases
 
 on:
   push:
-    branches:
-      - master
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+
+permissions:
+  contents: write
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-linux:
+  release-cross:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -18,6 +21,8 @@ jobs:
           - x86_64-unknown-linux-musl
           - aarch64-unknown-linux-gnu
           - aarch64-unknown-linux-musl
+          - x86_64-linux-android
+          - aarch64-linux-android
     steps:
       - uses: actions/checkout@v3
 
@@ -36,15 +41,14 @@ jobs:
       - name: Make Tarball
         run: |
           mv target/${{ matrix.target }}/release/ringer ringer
-          XZ_OPT=-e9 tar caf ringer.${{ matrix.target }}.tar.xz ringer
+          XZ_OPT=-e9 tar caf ringer_${{  github.ref_name }}_${{ matrix.target }}.tar.xz ringer
 
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
         with:
-          name: ${{ matrix.target }}
-          path: ringer.${{ matrix.target }}.tar.xz
+          files: ringer_${{  github.ref_name }}_${{ matrix.target }}.tar.xz
 
-  build-macOS:
+  release-macOS:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
@@ -56,23 +60,28 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@1.66
+        with:
+          targets: aarch64-apple-darwin
 
       - name: Build
         timeout-minutes: 60
-        run: cargo build --release
+        run: cargo build --release && cargo build --release --target=aarch64-apple-darwin
 
       - name: Make Tarball
         run: |
           mv target/release/ringer ringer
-          XZ_OPT=-e9 tar caf ringer.x86_64-apple-darwin.tar.xz ringer
+          XZ_OPT=-e9 tar caf ringer_${{  github.ref_name }}_x86_64-apple-darwin.tar.xz ringer
+          mv target/aarch64-apple-darwin/release/ringer ringer
+          XZ_OPT=-e9 tar caf ringer_${{  github.ref_name }}_aarch64-apple-darwin.tar.xz ringer
 
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
         with:
-          name: x86_64-apple-darwin
-          path: ringer.x86_64-apple-darwin.tar.xz
+          files: |
+            ringer_${{  github.ref_name }}_x86_64-apple-darwin.tar.xz
+            ringer_${{  github.ref_name }}_aarch64-apple-darwin.tar.xz
 
-  build-windows:
+  release-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
@@ -87,10 +96,9 @@ jobs:
       - name: Make Tarball
         run: |
           mv target/release/ringer.exe ringer.exe
-          7z a -t7z -mx=9 ringer.x86_64-pc-windows-msvc.7z ringer.exe
+          7z a -t7z -mx=9 ringer_${{  github.ref_name }}_x86_64-pc-windows-msvc.7z ringer.exe
 
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
         with:
-          name: x86_64-pc-windows-msvc
-          path: ringer.x86_64-pc-windows-msvc.7z
+          files: ringer_${{  github.ref_name }}_x86_64-pc-windows-msvc.7z

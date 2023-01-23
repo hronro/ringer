@@ -8,8 +8,9 @@ use log::{debug, Level as LogLevel};
 use url::Url;
 
 use crate::config::{
-    load_config_file, ConfigFileNodeOrNodes, ConfigFileProviderOrProviders, ConfigFileTemplate,
-    ConfigFileTemplateOrTemplates, MergedConfig,
+    load_config_file, ConfigFileNodeOrNodes, ConfigFileProviderOrProviders,
+    ConfigFileSortRuleOrSortRules, ConfigFileTemplate, ConfigFileTemplateOrTemplates, MergedConfig,
+    SortRules,
 };
 use crate::provider::{Clash, Providers, Ssr};
 use crate::template::get_built_in_templates;
@@ -90,7 +91,7 @@ pub async fn get_config() -> Result<MergedConfig> {
         })
         .collect();
 
-    let (providers, standalone_nodes, config_file_templates, output_directory) =
+    let (providers, standalone_nodes, sort_rules, config_file_templates, output_directory) =
         if let Some(config_file_path_string) = cli_config.config {
             let config_file_path = parse_string_to_path(config_file_path_string)?;
             let config_file = {
@@ -125,6 +126,14 @@ pub async fn get_config() -> Result<MergedConfig> {
                 vec![]
             };
 
+            let sort_rules = config_file
+                .sort_rule
+                .map(|rule_or_rules| match rule_or_rules {
+                    ConfigFileSortRuleOrSortRules::Rule(rule) => SortRules::from(vec![rule]),
+                    ConfigFileSortRuleOrSortRules::Rules(rules) => SortRules::from(rules),
+                })
+                .unwrap_or_else(SortRules::empty);
+
             let config_file_templates =
                 if let Some(config_file_templates_from_config_file) = config_file.template {
                     match config_file_templates_from_config_file {
@@ -151,6 +160,7 @@ pub async fn get_config() -> Result<MergedConfig> {
             (
                 providers,
                 standalone_nodes,
+                sort_rules,
                 config_file_templates,
                 output_directory,
             )
@@ -164,6 +174,7 @@ pub async fn get_config() -> Result<MergedConfig> {
             (
                 providers_from_cli,
                 vec![],
+                SortRules::empty(),
                 config_file_templates_from_cli,
                 output_directory,
             )
@@ -201,6 +212,7 @@ pub async fn get_config() -> Result<MergedConfig> {
     Ok(MergedConfig {
         providers,
         standalone_nodes,
+        sort_rules,
         templates,
         output_directory,
         log_level,

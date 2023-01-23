@@ -48,7 +48,7 @@ impl Adaptor for Clash {
     fn convert_node<'a>(&self, node: &'a Node) -> Option<Self::Node<'a>> {
         match node {
             Node::Ss(ss_node) => Some(ClashProxy::Ss {
-                name: ss_node.get_name(),
+                name: ss_node.get_display_name(),
                 server: ss_node.server.clone(),
                 port: ss_node.server_port,
                 cipher: ss_node.method.get_alias().to_string(),
@@ -58,7 +58,7 @@ impl Adaptor for Clash {
                 plugin_opts: ss_node.plugin_opts.clone(),
             }),
             Node::Ssr(ssr_node) => Some(ClashProxy::Ssr {
-                name: ssr_node.get_name(),
+                name: ssr_node.get_display_name(),
                 server: ssr_node.server.clone(),
                 port: ssr_node.server_port,
                 cipher: ssr_node.method.clone(),

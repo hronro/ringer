@@ -17,7 +17,7 @@ pub use ssr::Ssr;
 #[async_trait]
 #[enum_dispatch]
 pub trait Provider {
-    fn get_name(&self) -> Option<&str>;
+    fn get_name(&self) -> Option<&String>;
 
     fn get_url(&self) -> &Uri;
 

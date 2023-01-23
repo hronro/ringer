@@ -53,7 +53,7 @@ impl Adaptor for SingBox {
     fn convert_node<'a>(&self, node: &'a Node) -> Option<Self::Node<'a>> {
         match node {
             Node::Ss(ss_node) => Some(SingBoxNode::Shadowsocks {
-                tag: ss_node.get_name(),
+                tag: ss_node.get_display_name(),
                 server: &ss_node.server,
                 server_port: ss_node.server_port,
                 method: ss_node.method.get_alias(),
@@ -70,7 +70,7 @@ impl Adaptor for SingBox {
             }),
 
             Node::Ssr(ssr_node) => Some(SingBoxNode::Shadowsocksr {
-                tag: ssr_node.get_name(),
+                tag: ssr_node.get_display_name(),
                 server: &ssr_node.server,
                 server_port: ssr_node.server_port,
                 method: &ssr_node.method,

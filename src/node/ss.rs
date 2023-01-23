@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 /// The configuration of a Shadowsocks node.
 /// Reference: https://shadowsocks.org/guide/sip008.html
-#[derive(Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SsNode {
     pub id: Option<Uuid>,
@@ -141,16 +141,20 @@ impl SsNode {
     }
 }
 impl super::GetNodeName for SsNode {
-    fn get_name(&self) -> String {
-        if let Some(name) = self.remarks.as_ref() {
-            name.clone()
-        } else {
-            format!("{}:{}", &self.server, self.server_port)
-        }
+    fn get_name(&self) -> Option<&String> {
+        self.remarks.as_ref()
+    }
+
+    fn get_server(&'_ self) -> &'_ String {
+        &self.server
+    }
+
+    fn get_port(&self) -> u16 {
+        self.server_port
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub enum Method {
     // AEAD 2022 Ciphers
     #[serde(rename = "2022-blake3-aes-128-gcm")]
@@ -204,7 +208,7 @@ pub enum Method {
 impl Method {
     /// Get the method name using SCREAMING_SNAKE_CASE.
     #[allow(dead_code)]
-    pub fn get_name(&self) -> &'static str {
+    pub fn get_display_name(&self) -> &'static str {
         match self {
             Method::Ss2022Blake3Aes128Gcm => "2022_BLAKE3_AES_128_GCM",
             Method::Ss2022Blake3Aes256Gcm => "2022_BLAKE3_AES_256_GCM",

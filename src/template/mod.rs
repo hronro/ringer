@@ -1,13 +1,15 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::fs::{create_dir_all, write};
 use std::path::Path;
 
 use anyhow::Result;
 use log::{debug, error};
+use rayon::prelude::*;
 use serde::Serialize;
 use serde_json::{json, Value};
 use tera::{Context, Tera};
 
+use crate::config::SortRules;
 use crate::node::{GetNodeName, Node};
 use crate::provider::{Provider, Providers};
 
@@ -22,9 +24,9 @@ use functions::RingerFunctions;
 pub struct TemplateArgs<'a> {
     providers: &'a [Providers],
 
-    nodes_by_providers: &'a [Vec<Node>],
+    nodes_by_providers: Vec<Vec<&'a Node>>,
 
-    nodes_by_provider_names: HashMap<&'a str, HashSet<&'a Node>>,
+    nodes_by_provider_names: HashMap<&'a String, Vec<&'a Node>>,
 
     all_nodes: Vec<&'a Node>,
 }
@@ -34,30 +36,109 @@ impl<'a> TemplateArgs<'a> {
         providers: &'a [Providers],
         nodes_by_providers: &'a [Vec<Node>],
         standalone_nodes: &'a [Node],
+        sort_rules: &'a SortRules,
     ) -> Self {
-        let nodes_by_provider_names = {
-            let mut map = HashMap::with_capacity(providers.len());
-
-            for (index, nodes) in nodes_by_providers.iter().enumerate() {
-                if let Some(provider_name) = providers[index].get_name() {
-                    map.insert(provider_name, nodes.iter().collect());
-                }
-            }
-
-            map
-        };
-
-        let all_nodes_with_random_order: HashSet<_> = standalone_nodes
+        let nodes_by_providers_output = nodes_by_providers
             .iter()
-            .chain(nodes_by_providers.iter().flatten())
+            .enumerate()
+            .map(|(index, nodes)| {
+                let provider_name = providers[index].get_name();
+
+                let mut nodes: Vec<&Node> = nodes.iter().collect();
+
+                nodes.par_sort_unstable_by(|a, b| {
+                    let priority_a =
+                        sort_rules.get_node_priority(a.get_name(), provider_name, Some(index));
+                    let priority_b =
+                        sort_rules.get_node_priority(b.get_name(), provider_name, Some(index));
+
+                    if priority_a != priority_b {
+                        priority_b.cmp(&priority_a)
+                    } else {
+                        a.get_display_name().cmp(&b.get_display_name())
+                    }
+                });
+
+                nodes
+            })
             .collect();
 
-        let mut all_nodes: Vec<_> = all_nodes_with_random_order.into_iter().collect();
-        all_nodes.sort_unstable_by(|a, b| a.get_name().partial_cmp(&b.get_name()).unwrap());
+        let nodes_by_provider_names = nodes_by_providers
+            .iter()
+            .enumerate()
+            .filter_map(|(index, nodes)| {
+                if let Some(provider_name) = providers[index].get_name() {
+                    let mut nodes: Vec<&Node> = nodes.iter().collect();
+
+                    nodes.par_sort_unstable_by(|a, b| {
+                        let priority_a = sort_rules.get_node_priority(
+                            a.get_name(),
+                            Some(provider_name),
+                            Some(index),
+                        );
+                        let priority_b = sort_rules.get_node_priority(
+                            b.get_name(),
+                            Some(provider_name),
+                            Some(index),
+                        );
+
+                        if priority_a != priority_b {
+                            priority_b.cmp(&priority_a)
+                        } else {
+                            a.get_display_name().cmp(&b.get_display_name())
+                        }
+                    });
+
+                    Some((provider_name, nodes))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let mut all_nodes_with_extra_infos: Vec<_> = nodes_by_providers
+            .iter()
+            .enumerate()
+            .flat_map(|(index, nodes)| {
+                let provider_name = providers[index].get_name();
+
+                nodes
+                    .iter()
+                    .map(move |node| (node, provider_name, Some(index)))
+            })
+            .chain(standalone_nodes.iter().map(|node| (node, None, None)))
+            .collect();
+
+        all_nodes_with_extra_infos.par_sort_unstable_by(
+            |(a_node, a_provider_name, a_provider_index),
+             (b_node, b_provider_name, b_provider_index)| {
+                let priority_a = sort_rules.get_node_priority(
+                    a_node.get_name(),
+                    *a_provider_name,
+                    *a_provider_index,
+                );
+                let priority_b = sort_rules.get_node_priority(
+                    b_node.get_name(),
+                    *b_provider_name,
+                    *b_provider_index,
+                );
+
+                if priority_a != priority_b {
+                    priority_b.cmp(&priority_a)
+                } else {
+                    a_node.get_display_name().cmp(&b_node.get_display_name())
+                }
+            },
+        );
+
+        let all_nodes = all_nodes_with_extra_infos
+            .into_iter()
+            .map(|(node, _, _)| node)
+            .collect();
 
         Self {
             providers,
-            nodes_by_providers,
+            nodes_by_providers: nodes_by_providers_output,
             nodes_by_provider_names,
             all_nodes,
         }

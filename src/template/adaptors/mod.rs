@@ -33,9 +33,8 @@ impl NodesSerializationOptions {
                 options.include_array_brackets = *include_array_brackets;
             } else {
                 return Err(tera::Error::msg(format!(
-                    "Function `{}` received an incorrect type for arg `include_array_brackets`: \
-                        got `{}` but expected bool",
-                    function_name, include_array_brackets
+                    "Function `{function_name}` received an incorrect type for arg `include_array_brackets`: \
+                        got `{include_array_brackets}` but expected bool",
                 )));
             }
         }
@@ -81,7 +80,7 @@ where
             if converted_node.is_none() {
                 warn!(
                     "node `{}` is not supported in {}{}, skip it",
-                    node.get_name(),
+                    node.get_display_name(),
                     Self::ADAPTOR_NAME[0..1].to_uppercase(),
                     &Self::ADAPTOR_NAME[1..],
                 );

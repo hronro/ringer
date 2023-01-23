@@ -8,7 +8,7 @@ use crate::template::adaptors::{
 };
 use crate::template::TemplateArgs;
 
-use super::RingerFunctions;
+use super::{get_filtered_nodes_by_function_args, RingerFunctions};
 
 pub struct GetNodes<'a>(&'a TemplateArgs<'a>);
 impl<'a> GetNodes<'a> {
@@ -25,10 +25,11 @@ impl<'a> Function for GetNodes<'a> {
 
         let options = NodesSerializationOptions::from_function_args(Self::NAME, args)?;
 
-        Ok(Value::String(adaptor.nodes_to_string(
-            self.0.all_nodes.iter().copied(),
-            options,
-        )))
+        let nodes = get_filtered_nodes_by_function_args(Self::NAME, self.0, args)?;
+
+        Ok(Value::String(
+            adaptor.nodes_to_string(nodes.into_iter(), options),
+        ))
     }
 
     fn is_safe(&self) -> bool {

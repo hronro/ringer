@@ -85,7 +85,7 @@ impl Adaptor for Surge {
                 };
 
                 Some(SurgeProxy {
-                    name: ss_node.get_name(),
+                    name: ss_node.get_display_name(),
                     proxy: ProxyType::Ss {
                         host: &ss_node.server,
                         port: ss_node.server_port,

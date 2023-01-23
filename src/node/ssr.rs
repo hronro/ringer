@@ -6,7 +6,7 @@ use log::trace;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-#[derive(Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SsrNode {
     pub remarks: Option<String>,
@@ -118,12 +118,24 @@ impl SsrNode {
     }
 }
 impl super::GetNodeName for SsrNode {
-    fn get_name(&self) -> String {
+    fn get_display_name(&self) -> String {
         if let Some(remarks) = self.remarks.as_ref() {
             remarks.clone()
         } else {
             format!("{}:{}", &self.server, self.server_port)
         }
+    }
+
+    fn get_name(&self) -> Option<&String> {
+        self.remarks.as_ref()
+    }
+
+    fn get_server(&'_ self) -> &'_ String {
+        &self.server
+    }
+
+    fn get_port(&self) -> u16 {
+        self.server_port
     }
 }
 

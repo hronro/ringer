@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
@@ -11,15 +12,168 @@ use crate::template::Template;
 use crate::utils::{load_content_from_url, parse_string_to_path, Path};
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields, tag = "type", rename_all = "snake_case")]
+pub enum SortRule {
+    NodeName { name: String, priority: u8 },
+    NodeNameContains { contains: String, priority: u8 },
+    ProviderName { name: String, priority: u8 },
+    ProviderIndex { index: usize, priority: u8 },
+    ProviderNameContains { contains: String, priority: u8 },
+}
+
+#[derive(Debug)]
+pub struct SortRules {
+    node_name_to_priority: HashMap<String, u8>,
+    node_names_contains: HashMap<String, u8>,
+    provider_name_to_priority: HashMap<String, u8>,
+    provider_index_to_priority: HashMap<usize, u8>,
+    provider_names_contains: HashMap<String, u8>,
+}
+impl From<Vec<SortRule>> for SortRules {
+    fn from(rules: Vec<SortRule>) -> Self {
+        let mut sort_rules = Self {
+            node_name_to_priority: HashMap::with_capacity(rules.len()),
+            node_names_contains: HashMap::with_capacity(rules.len()),
+            provider_name_to_priority: HashMap::with_capacity(rules.len()),
+            provider_index_to_priority: HashMap::with_capacity(rules.len()),
+            provider_names_contains: HashMap::with_capacity(rules.len()),
+        };
+
+        for rule in rules {
+            match rule {
+                SortRule::NodeName { name, priority } => {
+                    sort_rules.node_name_to_priority.insert(name, priority);
+                }
+                SortRule::NodeNameContains { contains, priority } => {
+                    sort_rules.node_names_contains.insert(contains, priority);
+                }
+                SortRule::ProviderName { name, priority } => {
+                    sort_rules.provider_name_to_priority.insert(name, priority);
+                }
+                SortRule::ProviderIndex { index, priority } => {
+                    sort_rules
+                        .provider_index_to_priority
+                        .insert(index, priority);
+                }
+                SortRule::ProviderNameContains { contains, priority } => {
+                    sort_rules
+                        .provider_names_contains
+                        .insert(contains, priority);
+                }
+            }
+        }
+
+        sort_rules
+    }
+}
+impl SortRules {
+    pub fn empty() -> Self {
+        Self {
+            node_name_to_priority: HashMap::with_capacity(0),
+            node_names_contains: HashMap::with_capacity(0),
+            provider_name_to_priority: HashMap::with_capacity(0),
+            provider_index_to_priority: HashMap::with_capacity(0),
+            provider_names_contains: HashMap::with_capacity(0),
+        }
+    }
+
+    fn get_priority_by_node_name(&self, name: &str) -> Option<u8> {
+        self.node_name_to_priority.get(name).copied()
+    }
+
+    fn get_priority_by_node_name_contains(&self, name: &str) -> Option<u8> {
+        let mut priority = None;
+
+        for (name_to_contain, name_contain_priority) in self.node_names_contains.iter() {
+            if name.contains(name_to_contain) {
+                if let Some(priority_inner) = priority {
+                    if *name_contain_priority > priority_inner {
+                        priority = Some(*name_contain_priority)
+                    }
+                } else {
+                    priority = Some(*name_contain_priority)
+                }
+            }
+        }
+
+        priority
+    }
+
+    fn get_priority_by_provider_name(&self, name: &str) -> Option<u8> {
+        self.provider_name_to_priority.get(name).copied()
+    }
+
+    fn get_priority_by_provider_index(&self, index: usize) -> Option<u8> {
+        self.provider_index_to_priority.get(&index).copied()
+    }
+
+    fn get_priority_by_provider_name_contains(&self, name: &str) -> Option<u8> {
+        let mut priority = None;
+
+        for (name_to_contain, name_contain_priority) in self.provider_names_contains.iter() {
+            if name.contains(name_to_contain) {
+                if let Some(priority_inner) = priority {
+                    if *name_contain_priority > priority_inner {
+                        priority = Some(*name_contain_priority)
+                    }
+                } else {
+                    priority = Some(*name_contain_priority)
+                }
+            }
+        }
+
+        priority
+    }
+
+    pub fn get_node_priority(
+        &self,
+        node_name: Option<&String>,
+        provider_name: Option<&String>,
+        provider_index: Option<usize>,
+    ) -> u8 {
+        if let Some(node_name) = node_name {
+            if let Some(priority) = self.get_priority_by_node_name(node_name) {
+                return priority;
+            }
+
+            if let Some(priority) = self.get_priority_by_node_name_contains(node_name) {
+                return priority;
+            }
+        }
+
+        if let Some(provider_name) = provider_name {
+            if let Some(priority) = self.get_priority_by_provider_name(provider_name) {
+                return priority;
+            }
+        }
+
+        if let Some(provider_index) = provider_index {
+            if let Some(priority) = self.get_priority_by_provider_index(provider_index) {
+                return priority;
+            }
+        }
+
+        if let Some(provider_name) = provider_name {
+            if let Some(priority) = self.get_priority_by_provider_name_contains(provider_name) {
+                return priority;
+            }
+        }
+
+        0
+    }
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigFile {
     pub provider: Option<ConfigFileProviderOrProviders>,
 
     pub node: Option<ConfigFileNodeOrNodes>,
 
+    pub sort_rule: Option<ConfigFileSortRuleOrSortRules>,
+
     pub template: Option<ConfigFileTemplateOrTemplates>,
 }
-
 impl ConfigFile {
     pub fn rewrite_relative_path(&mut self, config_file_path: Path) -> Result<()> {
         match config_file_path {
@@ -113,6 +267,13 @@ pub enum ConfigFileNodeOrNodes {
     Nodes(Vec<Node>),
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(untagged, deny_unknown_fields)]
+pub enum ConfigFileSortRuleOrSortRules {
+    Rule(SortRule),
+    Rules(Vec<SortRule>),
+}
+
 /// Template definition used in the config file.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -188,6 +349,8 @@ pub struct MergedConfig {
     pub providers: Vec<Providers>,
 
     pub standalone_nodes: Vec<Node>,
+
+    pub sort_rules: SortRules,
 
     pub templates: Vec<Template>,
 

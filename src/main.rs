@@ -61,12 +61,15 @@ async fn main() -> Result<()> {
         std::result::Result::<Vec<Node>, Error>::Ok(nodes)
     });
 
+    if !config.providers.is_empty() {
+        info!("start fetching providers");
+    }
     NODES_BY_PROVIDERS
         .set(try_join_all(nodes_futures).await?)
         .map_err(|_| anyhow!("can't set NODES_BY_PROVIDERS!"))?;
     let nodes_by_providers = NODES_BY_PROVIDERS.get().unwrap();
     if !config.providers.is_empty() {
-        info!("fetch providers complete");
+        info!("fetching providers complete");
     }
 
     TEMPLATE_ARGS
@@ -74,6 +77,7 @@ async fn main() -> Result<()> {
             &config.providers,
             nodes_by_providers,
             &config.standalone_nodes,
+            &config.sort_rules,
         ))
         .map_err(|_| anyhow!("can't set TEMPLATE_ARGS!"))?;
 
@@ -82,7 +86,9 @@ async fn main() -> Result<()> {
     debug!("template args:\n{:#?}", &TEMPLATE_ARGS);
 
     let mut render_engine = RenderEngine::new(template_args, &config.templates);
+    info!("start rendering templates");
     render_engine.render(&config.output_directory)?;
+    info!("rendering templates complete");
 
     eprintln!("✅ Done!");
     Ok(())

@@ -29,8 +29,8 @@ pub struct Clash {
 
 #[async_trait]
 impl Provider for Clash {
-    fn get_name(&self) -> Option<&str> {
-        self.name.as_deref()
+    fn get_name(&self) -> Option<&String> {
+        self.name.as_ref()
     }
 
     fn get_url(&self) -> &Uri {

@@ -42,6 +42,8 @@ where
 #[serde(tag = "type", deny_unknown_fields)]
 #[enum_dispatch(GetNodeName)]
 pub enum Node {
+    #[serde(rename = "shadowsocks")]
     Ss(Box<SsNode>),
+    #[serde(rename = "shadowsocksr")]
     Ssr(Box<SsrNode>),
 }

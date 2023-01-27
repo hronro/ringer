@@ -50,7 +50,7 @@
         },
 {{
     get_nodes(type = "sing-box", include_array_brackets = false)
-        | insert_indent(spaces = 6, include_first_line = true)
+        | insert_indents(spaces = 6, include_first_line = true)
 }}
     ]
 }

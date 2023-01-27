@@ -25,7 +25,7 @@ dns:
       - '+.twitter.com'
 
 proxies:
-{{ get_nodes(type = "clash") | insert_indent(spaces = 2, include_first_line = true) }}
+{{ get_nodes(type = "clash") | insert_indents(spaces = 2, include_first_line = true) }}
 proxy-groups:
   - type: select
     name: Proxy

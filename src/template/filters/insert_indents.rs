@@ -4,11 +4,11 @@ use tera::{Error, Filter};
 
 use super::RingerFilter;
 
-pub struct InsertIndent;
-impl RingerFilter for InsertIndent {
-    const NAME: &'static str = "insert_indent";
+pub struct InsertIndents;
+impl RingerFilter for InsertIndents {
+    const NAME: &'static str = "insert_indents";
 }
-impl Filter for InsertIndent {
+impl Filter for InsertIndents {
     fn filter(
         &self,
         value: &Value,
@@ -79,7 +79,7 @@ impl Filter for InsertIndent {
         } else {
             Err(Error::msg(formatcp!(
                 "Filter `{}` was used on a value that isn't a string.",
-                InsertIndent::NAME
+                InsertIndents::NAME
             )))
         }
     }

@@ -214,7 +214,7 @@ impl<'a> RenderEngine<'a> {
         let context = Context::new();
 
         let mut tera = Tera::default();
-        tera.register_filter(filters::InsertIndent::NAME, filters::InsertIndent);
+        tera.register_filter(filters::InsertIndents::NAME, filters::InsertIndents);
         tera.register_function(functions::GetNodes::NAME, functions::GetNodes::new(args));
         tera.register_function(
             functions::GetNodesNames::NAME,

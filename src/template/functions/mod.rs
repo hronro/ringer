@@ -64,29 +64,85 @@ fn get_filtered_nodes_by_function_args<'a>(
         &template_args.all_nodes
     };
 
-    if let Some(name_contains) = args.get("name_contains") {
-        if let Value::String(name_contains) = name_contains {
-            Ok(nodes
-                .iter()
-                .filter_map(|node| {
-                    if let Some(name) = node.get_name() {
-                        if name.contains(name_contains) {
-                            Some(*node)
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                })
-                .collect())
-        } else {
-            Err(Error::msg(format!(
-                "Function `{function_name}` received an incorrect type for arg `name_contains`: \
-                    get `{name_contains}` but expected String",
-            )))
-        }
-    } else {
+    macro_rules! create_string_arg {
+        ($arg_name: ident) => {
+            let $arg_name = if let Some(value) = args.get(stringify!($arg_name)) {
+                if let Value::String($arg_name) = value {
+                    Some($arg_name)
+                } else {
+                    return Err(Error::msg(format!(
+                        "Function `{function_name}` received an incorrect type for arg `{}`: \
+                            get `{value}` but expected String",
+                        stringify!($arg_name),
+                    )));
+                }
+            } else {
+                None
+            };
+        };
+    }
+
+    create_string_arg!(name_starts_with);
+    create_string_arg!(name_not_starts_with);
+    create_string_arg!(name_ends_with);
+    create_string_arg!(name_not_ends_with);
+    create_string_arg!(name_contains);
+    create_string_arg!(name_not_contains);
+
+    if name_starts_with.is_none()
+        && name_not_starts_with.is_none()
+        && name_ends_with.is_none()
+        && name_not_ends_with.is_none()
+        && name_contains.is_none()
+        && name_not_contains.is_none()
+    {
         Ok(nodes.clone())
+    } else {
+        Ok(nodes
+            .iter()
+            .filter_map(|node| {
+                if let Some(name) = node.get_name() {
+                    if let Some(name_not_starts_with) = name_not_starts_with {
+                        if name.starts_with(name_not_starts_with) {
+                            return None;
+                        }
+                    }
+
+                    if let Some(name_not_ends_with) = name_not_ends_with {
+                        if name.ends_with(name_not_ends_with) {
+                            return None;
+                        }
+                    }
+
+                    if let Some(name_not_contains) = name_not_contains {
+                        if name.contains(name_not_contains) {
+                            return None;
+                        }
+                    }
+
+                    if let Some(name_starts_with) = name_starts_with {
+                        if !name.starts_with(name_starts_with) {
+                            return None;
+                        }
+                    }
+
+                    if let Some(name_ends_with) = name_ends_with {
+                        if !name.ends_with(name_ends_with) {
+                            return None;
+                        }
+                    }
+
+                    if let Some(name_contains) = name_contains {
+                        if !name.contains(name_contains) {
+                            return None;
+                        }
+                    }
+
+                    Some(*node)
+                } else {
+                    None
+                }
+            })
+            .collect())
     }
 }

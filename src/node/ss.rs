@@ -23,8 +23,7 @@ pub struct SsNode {
     pub method: Method,
     pub udp: Option<bool>,
     pub udp_over_tcp: Option<bool>,
-    pub plugin: Option<String>,
-    pub plugin_opts: Option<BTreeMap<String, String>>,
+    pub plugin: Option<Plugin>,
 }
 impl SsNode {
     /// Convert a SS link to a SS node.
@@ -86,33 +85,27 @@ impl SsNode {
             trace!("SS link plugin argument: {}", query);
         }
         let mut query = url.query_pairs();
-        let (plugin, plugin_opts) =
-            if let Some((_, plugin_arg)) = query.find(|(key, _)| key == "plugin") {
-                let mut plugin_arg_parts = plugin_arg.split(';');
-                let plugin = plugin_arg_parts.next().ok_or_else(|| {
-                    anyhow!("SS link `{}` does not contain plugin.", url.to_string())
-                })?;
+        let plugin = if let Some((_, plugin_arg)) = query.find(|(key, _)| key == "plugin") {
+            let mut plugin_arg_parts = plugin_arg.split(';');
+            let plugin_str = plugin_arg_parts
+                .next()
+                .ok_or_else(|| anyhow!("SS link `{}` does not contain plugin.", url.to_string()))?;
 
-                let plugin_opts = plugin_arg_parts
-                    .filter_map(|plugin_arg_str| {
-                        let mut plugin_arg_str_parts = plugin_arg_str.split('=');
-                        let key = plugin_arg_str_parts.next()?;
-                        let value = plugin_arg_str_parts.next().unwrap_or("");
-                        Some((key.to_string(), value.to_string()))
-                    })
-                    .collect();
+            let plugin_opts = plugin_arg_parts
+                .filter_map(|plugin_arg_str| {
+                    let mut plugin_arg_str_parts = plugin_arg_str.split('=');
+                    let key = plugin_arg_str_parts.next()?;
+                    let value = plugin_arg_str_parts.next().unwrap_or("");
+                    Some((key.to_string(), value.to_string()))
+                })
+                .collect::<BTreeMap<String, String>>();
 
-                (
-                    Some(plugin.to_string()),
-                    if plugin_arg.is_empty() {
-                        None
-                    } else {
-                        Some(plugin_opts)
-                    },
-                )
-            } else {
-                (None, None)
-            };
+            let plugin = Plugin::from_name_and_opts(plugin_str.to_string(), plugin_opts)?;
+
+            Some(plugin)
+        } else {
+            None
+        };
 
         let remarks = url
             .fragment()
@@ -128,15 +121,6 @@ impl SsNode {
             udp: None,
             udp_over_tcp: None,
             plugin,
-            plugin_opts,
-        })
-    }
-
-    pub fn plugin_opts_str(&self) -> Option<String> {
-        self.plugin_opts.as_ref().map(|map| {
-            map.iter()
-                .map(|(key, value)| format!("{key}={value}"))
-                .join(";")
         })
     }
 }
@@ -204,7 +188,6 @@ pub enum Method {
     #[serde(rename = "rc4-md5")]
     Rc4Md5,
 }
-
 impl Method {
     /// Get the method name using SCREAMING_SNAKE_CASE.
     #[allow(dead_code)]
@@ -337,13 +320,137 @@ impl Method {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct ObfsArgs<'a> {
-    pub obfs: Option<ObfsType>,
-    pub host: Option<&'a str>,
-    pub uri: Option<&'a str>,
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Plugin {
+    SimpleObfs(ObfsOpts),
+
+    // TODO: add details about the plugins below
+    GoQuiet,
+    Cloak,
+    Kcptun,
+    V2ray,
+
+    UnknownPlugin {
+        plugin_name: String,
+        plugin_opts: Option<BTreeMap<String, String>>,
+    },
 }
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+impl Plugin {
+    pub fn from_name_and_opts(name: String, opts: BTreeMap<String, String>) -> Result<Self> {
+        match name.as_str() {
+            "simple-obfs" | "obfs-local" => {
+                let obfs_opts = parse_obfs_plugin_args(&opts)?;
+                Ok(Plugin::SimpleObfs(obfs_opts))
+            }
+
+            // TODO: add details about the plugins below
+            "gq" | "gq-client" | "go-quiet" => Ok(Plugin::GoQuiet),
+            "ck" | "ck-client" | "cloak" => Ok(Plugin::Cloak),
+            "kcptun" => Ok(Plugin::Kcptun),
+            "v2ray" | "v2ray-plugin" => Ok(Plugin::V2ray),
+
+            _ => Ok(Plugin::UnknownPlugin {
+                plugin_name: name,
+                plugin_opts: if opts.is_empty() { None } else { Some(opts) },
+            }),
+        }
+    }
+
+    pub fn plugin_name(&'_ self) -> &'_ str {
+        match self {
+            Self::SimpleObfs(_) => "simple-obfs",
+            Self::GoQuiet => "go-quiet",
+            Self::Cloak => "cloak",
+            Self::Kcptun => "kcptun",
+            Self::V2ray => "v2ray",
+            Self::UnknownPlugin {
+                plugin_name,
+                plugin_opts: _,
+            } => plugin_name,
+        }
+    }
+
+    pub fn get_opts_string(&self) -> Option<String> {
+        match self {
+            Self::SimpleObfs(obfs_opts) => {
+                if matches!(
+                    (&obfs_opts.obfs, &obfs_opts.host, &obfs_opts.uri),
+                    (None, None, None)
+                ) {
+                    return None;
+                }
+
+                Some(
+                    [
+                        ("obfs", obfs_opts.obfs.as_ref().map(|obfs| obfs.to_string())),
+                        ("host", obfs_opts.host.clone()),
+                        ("uri", obfs_opts.uri.clone()),
+                    ]
+                    .into_iter()
+                    .filter_map(|(key, value)| value.map(|value| format!("{key}={value}")))
+                    .join(";"),
+                )
+            }
+
+            Self::GoQuiet | Self::Cloak | Self::Kcptun | Self::V2ray => todo!(),
+
+            Self::UnknownPlugin {
+                plugin_name: _,
+                plugin_opts,
+            } => plugin_opts.as_ref().map(|map| {
+                map.iter()
+                    .map(|(key, value)| format!("{key}={value}"))
+                    .join(";")
+            }),
+        }
+    }
+
+    pub fn get_opts_map(&self) -> BTreeMap<String, String> {
+        match self {
+            Self::SimpleObfs(obfs_opts) => {
+                let mut map = BTreeMap::new();
+
+                if let Some(obfs) = obfs_opts.obfs {
+                    map.insert("obfs".to_string(), obfs.to_string());
+                }
+                if let Some(host) = &obfs_opts.host {
+                    map.insert("host".to_string(), host.to_owned());
+                }
+                if let Some(uri) = &obfs_opts.uri {
+                    map.insert("uri".to_string(), uri.to_owned());
+                }
+
+                map
+            }
+            Self::GoQuiet => todo!(),
+            Self::Cloak => todo!(),
+            Self::Kcptun => todo!(),
+            Self::V2ray => todo!(),
+            Self::UnknownPlugin {
+                plugin_name: _,
+                plugin_opts,
+            } => plugin_opts.clone().unwrap_or_default(),
+        }
+    }
+}
+impl Display for Plugin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.plugin_name())?;
+        if let Some(opts_string) = self.get_opts_string() {
+            write!(f, ";{}", opts_string)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ObfsOpts {
+    pub obfs: Option<ObfsType>,
+    pub host: Option<String>,
+    pub uri: Option<String>,
+}
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub enum ObfsType {
     Http,
     Tls,
@@ -351,13 +458,22 @@ pub enum ObfsType {
 impl Display for ObfsType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ObfsType::Http => write!(f, "http"),
-            ObfsType::Tls => write!(f, "tls"),
+            Self::Http => write!(f, "http"),
+            Self::Tls => write!(f, "tls"),
+        }
+    }
+}
+impl ObfsType {
+    #[allow(dead_code)]
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Http => "http",
+            Self::Tls => "tls",
         }
     }
 }
 
-pub fn parse_obfs_plugin_args(plugin_opts: &BTreeMap<String, String>) -> Result<ObfsArgs> {
+pub fn parse_obfs_plugin_args(plugin_opts: &BTreeMap<String, String>) -> Result<ObfsOpts> {
     let obfs = if let Some(obfs) = plugin_opts.get("obfs") {
         match obfs.as_str() {
             "http" => Some(ObfsType::Http),
@@ -369,10 +485,10 @@ pub fn parse_obfs_plugin_args(plugin_opts: &BTreeMap<String, String>) -> Result<
     } else {
         None
     };
-    let host = plugin_opts.get("obfs-host").map(|host| host.as_str());
-    let uri = plugin_opts.get("obfs-uri").map(|uri| uri.as_str());
+    let host = plugin_opts.get("obfs-host").map(|value| value.to_string());
+    let uri = plugin_opts.get("obfs-uri").map(|value| value.to_string());
 
-    Ok(ObfsArgs { obfs, host, uri })
+    Ok(ObfsOpts { obfs, host, uri })
 }
 
 #[cfg(test)]
@@ -392,7 +508,6 @@ mod tests {
             udp: None,
             udp_over_tcp: None,
             plugin: None,
-            plugin_opts: None,
         };
         assert_eq!(SsNode::from_url(&link).unwrap(), node);
 
@@ -409,12 +524,11 @@ mod tests {
             method: Method::Rc4Md5,
             udp: None,
             udp_over_tcp: None,
-            plugin: Some(String::from("obfs-local")),
-            plugin_opts: Some(
-                [("obfs".to_string(), "http".to_string())]
-                    .into_iter()
-                    .collect(),
-            ),
+            plugin: Some(Plugin::SimpleObfs(ObfsOpts {
+                obfs: Some(ObfsType::Http),
+                host: None,
+                uri: None,
+            })),
         };
         assert_eq!(
             SsNode::from_url(&link_with_plugin).unwrap(),
@@ -435,7 +549,6 @@ mod tests {
             udp: None,
             udp_over_tcp: None,
             plugin: None,
-            plugin_opts: None,
         };
         assert_eq!(SsNode::from_url(&link).unwrap(), node);
 
@@ -452,12 +565,7 @@ mod tests {
             method: Method::Ss2022Blake3Aes256Gcm,
             udp: None,
             udp_over_tcp: None,
-            plugin: Some(String::from("v2ray-plugin")),
-            plugin_opts: Some(
-                [("server".to_string(), "".to_string())]
-                    .into_iter()
-                    .collect(),
-            ),
+            plugin: Some(Plugin::V2ray),
         };
         assert_eq!(
             SsNode::from_url(&link_with_plugin).unwrap(),

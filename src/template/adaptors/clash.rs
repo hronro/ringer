@@ -54,8 +54,11 @@ impl Adaptor for Clash {
                 cipher: ss_node.method.get_alias().to_string(),
                 password: ss_node.password.clone(),
                 udp: ss_node.udp,
-                plugin: ss_node.plugin.clone(),
-                plugin_opts: ss_node.plugin_opts.clone(),
+                plugin: ss_node
+                    .plugin
+                    .as_ref()
+                    .map(|plugin| plugin.plugin_name().to_string()),
+                plugin_opts: ss_node.plugin.as_ref().map(|plugin| plugin.get_opts_map()),
             }),
             Node::Ssr(ssr_node) => Some(ClashProxy::Ssr {
                 name: ssr_node.get_display_name(),

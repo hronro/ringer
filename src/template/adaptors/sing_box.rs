@@ -2,7 +2,7 @@ use serde::Serialize;
 use serde_json::to_string_pretty;
 use serde_with::skip_serializing_none;
 
-use crate::node::{GetNodeName, Node};
+use crate::node::{ss::Plugin as SsPlugin, GetNodeName, Node};
 
 use super::Adaptor;
 
@@ -58,8 +58,21 @@ impl Adaptor for SingBox {
                 server_port: ss_node.server_port,
                 method: ss_node.method.get_alias(),
                 password: &ss_node.password,
-                plugin: ss_node.plugin.as_deref(),
-                plugin_opts: ss_node.plugin_opts_str(),
+                // plugin: ss_node.plugin.as_deref(),
+                plugin: match ss_node.plugin {
+                    Some(SsPlugin::SimpleObfs(_)) => Some("obfs-local"),
+                    Some(SsPlugin::V2ray) => Some("v2ray-plugin"),
+                    None => None,
+
+                    // Other plugins are not supported in sing-box.
+                    _ => {
+                        return None;
+                    }
+                },
+                plugin_opts: ss_node
+                    .plugin
+                    .as_ref()
+                    .and_then(|plugin| plugin.get_opts_string()),
                 // if `ss_node.udp` equals `Some(false)`,
                 // the `network` should be `"tcp"`,
                 // otherwise keep `network` as `None`.

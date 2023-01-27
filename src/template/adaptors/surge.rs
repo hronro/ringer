@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::node::ss::{parse_obfs_plugin_args, ObfsArgs};
+use crate::node::ss::{ObfsOpts, Plugin as SsPlugin};
 use crate::node::{GetNodeName, Node};
 
 use super::Adaptor;
@@ -18,7 +18,7 @@ pub enum ProxyType<'a> {
         port: u16,
         encrypt_method: &'a str,
         password: &'a str,
-        obfs: Option<ObfsArgs<'a>>,
+        obfs: Option<&'a ObfsOpts>,
         udp_relay: bool,
     },
 }
@@ -43,11 +43,11 @@ impl<'a> Display for ProxyType<'a> {
                         write!(f, ", obfs={obfs_obfs}")?;
                     }
 
-                    if let Some(host) = obfs.host {
+                    if let Some(host) = &obfs.host {
                         write!(f, ", obfs-host={host}")?;
                     }
 
-                    if let Some(uri) = obfs.uri {
+                    if let Some(uri) = &obfs.uri {
                         write!(f, ", obfs-uri={uri}")?;
                     }
                 }
@@ -74,16 +74,10 @@ impl Adaptor for Surge {
                 }
 
                 let obfs = if let Some(plugin) = &ss_node.plugin {
-                    if plugin != "simple-obfs" {
+                    if let SsPlugin::SimpleObfs(obfs_opts) = plugin {
+                        Some(obfs_opts)
+                    } else {
                         return None;
-                    }
-
-                    match ss_node.plugin_opts.as_ref().map(parse_obfs_plugin_args) {
-                        Some(Ok(obfs_args)) => Some(obfs_args),
-                        Some(Err(_)) => {
-                            return None;
-                        }
-                        None => None,
                     }
                 } else {
                     None

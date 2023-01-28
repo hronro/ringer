@@ -383,8 +383,8 @@ impl Plugin {
                 Some(
                     [
                         ("obfs", obfs_opts.obfs.as_ref().map(|obfs| obfs.to_string())),
-                        ("host", obfs_opts.host.clone()),
-                        ("uri", obfs_opts.uri.clone()),
+                        ("obfs-host", obfs_opts.host.clone()),
+                        ("obfs-uri", obfs_opts.uri.clone()),
                     ]
                     .into_iter()
                     .filter_map(|(key, value)| value.map(|value| format!("{key}={value}")))

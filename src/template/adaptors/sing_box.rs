@@ -79,7 +79,7 @@ impl Adaptor for SingBox {
                 network: ss_node
                     .udp
                     .and_then(|udp| if udp { None } else { Some("tcp") }),
-                udp_over_tcp: None,
+                udp_over_tcp: ss_node.udp_over_tcp,
             }),
 
             Node::Ssr(ssr_node) => Some(SingBoxNode::Shadowsocksr {

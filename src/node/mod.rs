@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod ss;
 pub mod ssr;
+pub mod v2ray;
 
 pub use ss::SsNode;
 pub use ssr::SsrNode;

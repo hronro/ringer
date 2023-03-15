@@ -8,6 +8,7 @@ use serde_json::Value;
 use crate::node::{GetNodeName, Node};
 
 pub mod clash;
+mod clash_meta;
 mod sing_box;
 mod surge;
 
@@ -96,6 +97,7 @@ where
 #[enum_dispatch(ConvertNodesToString)]
 pub enum Adaptors {
     Clash(clash::Clash),
+    ClashMeta(clash_meta::ClashMeta),
     SingBox(sing_box::SingBox),
     Surge(surge::Surge),
 }
@@ -104,8 +106,8 @@ pub fn get_adaptor_from_args(args: &HashMap<String, Value>) -> Result<Adaptors> 
     if let Some(Value::String(adaptor_name_from_args)) = args.get("type") {
         match adaptor_name_from_args.as_str() {
             clash::Clash::ADAPTOR_NAME => Ok(Adaptors::Clash(Default::default())),
+            clash_meta::ClashMeta::ADAPTOR_NAME => Ok(Adaptors::ClashMeta(Default::default())),
             sing_box::SingBox::ADAPTOR_NAME => Ok(Adaptors::SingBox(Default::default())),
-
             surge::Surge::ADAPTOR_NAME => Ok(Adaptors::Surge(Default::default())),
 
             _ => Err(anyhow!(

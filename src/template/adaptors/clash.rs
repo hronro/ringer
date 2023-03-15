@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use serde_yaml::to_string;
 
 use crate::node::{GetNodeName, Node};
@@ -9,10 +10,11 @@ use super::Adaptor;
 
 /// Clash Proxy Configuration
 /// Reference: https://github.com/Dreamacro/clash/wiki/Configuration
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ClashProxy {
-    #[serde(rename = "ss", rename_all = "snake_case")]
+    #[serde(rename = "ss", rename_all = "kebab-case")]
     Ss {
         name: String,
         server: String,
@@ -23,7 +25,8 @@ pub enum ClashProxy {
         plugin: Option<String>,
         plugin_opts: Option<BTreeMap<String, String>>,
     },
-    #[serde(rename = "ssr", rename_all = "snake_case")]
+
+    #[serde(rename = "ssr", rename_all = "kebab-case")]
     Ssr {
         name: String,
         server: String,

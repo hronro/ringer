@@ -187,6 +187,13 @@ pub fn get_built_in_templates() -> Vec<Template> {
             output_sub_directories: vec![String::from("clash")],
         },
         Template {
+            name: Some(String::from("built_in_clash_meta")),
+            file_name: String::from("config.yaml"),
+            template: String::from(include_str!("./built_in_templates/clash_meta/config.yaml")),
+            requires: vec![],
+            output_sub_directories: vec![String::from("clash-meta")],
+        },
+        Template {
             name: Some(String::from("built_in_sing_box")),
             file_name: String::from("config.json"),
             template: String::from(include_str!("./built_in_templates/sing-box/config.json")),

@@ -2,7 +2,7 @@ use serde::Serialize;
 use serde_json::to_string_pretty;
 use serde_with::skip_serializing_none;
 
-use crate::node::{ss::Plugin as SsPlugin, GetNodeName, Node};
+use crate::node::{hysteria::Speed as HysteriaSpeed, ss::Plugin as SsPlugin, GetNodeName, Node};
 
 use super::Adaptor;
 
@@ -41,6 +41,33 @@ pub enum SingBoxNode<'a> {
         protocol_param: Option<&'a str>,
         network: Option<&'a str>,
     },
+
+    /// Hysteria outbound
+    /// Reference: https://sing-box.sagernet.org/configuration/outbound/hysteria
+    #[serde(rename = "hysteria")]
+    Hysteria {
+        tag: String,
+        server: &'a str,
+        server_port: u16,
+        up: Option<&'a str>,
+        up_mbps: Option<u32>,
+        down: Option<&'a str>,
+        down_mbps: Option<u32>,
+        obfs: Option<&'a str>,
+        auth_str: Option<&'a str>,
+        tls: SingBoxTlsOptions<'a>,
+    },
+}
+
+/// TLS Options
+/// Reference: https://sing-box.sagernet.org/configuration/shared/tls/#outbound
+#[skip_serializing_none]
+#[derive(Serialize)]
+pub struct SingBoxTlsOptions<'a> {
+    enabled: bool,
+    server_name: Option<&'a str>,
+    insecure: Option<bool>,
+    alpn: Option<&'a [String]>,
 }
 
 #[derive(Default)]
@@ -93,6 +120,42 @@ impl Adaptor for SingBox {
                 protocol: &ssr_node.protocol,
                 protocol_param: ssr_node.protocol_param.as_deref(),
                 network: None,
+            }),
+
+            Node::Hysteria(hysteria_node) => Some(SingBoxNode::Hysteria {
+                tag: hysteria_node.get_display_name(),
+                server: &hysteria_node.server,
+                server_port: hysteria_node.port,
+                up: match &hysteria_node.up {
+                    HysteriaSpeed::Text(up) => Some(up),
+                    HysteriaSpeed::Mbps(_) => None,
+                },
+                up_mbps: match &hysteria_node.up {
+                    HysteriaSpeed::Text(_) => None,
+                    HysteriaSpeed::Mbps(up) => Some(*up),
+                },
+                down: match &hysteria_node.down {
+                    HysteriaSpeed::Text(down) => Some(down),
+                    HysteriaSpeed::Mbps(_) => None,
+                },
+                down_mbps: match &hysteria_node.down {
+                    HysteriaSpeed::Text(_) => None,
+                    HysteriaSpeed::Mbps(down) => Some(*down),
+                },
+                obfs: hysteria_node.obfs.as_deref(),
+                auth_str: hysteria_node.auth.as_deref(),
+                tls: SingBoxTlsOptions {
+                    enabled: true,
+                    server_name: Some(
+                        hysteria_node
+                            .tls
+                            .sni
+                            .as_deref()
+                            .unwrap_or(&hysteria_node.server),
+                    ),
+                    insecure: hysteria_node.tls.insecure,
+                    alpn: hysteria_node.tls.alpn.as_deref(),
+                },
             }),
         }
     }

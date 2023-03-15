@@ -60,6 +60,7 @@ impl Adaptor for Clash {
                     .map(|plugin| plugin.plugin_name().to_string()),
                 plugin_opts: ss_node.plugin.as_ref().map(|plugin| plugin.get_opts_map()),
             }),
+
             Node::Ssr(ssr_node) => Some(ClashProxy::Ssr {
                 name: ssr_node.get_display_name(),
                 server: ssr_node.server.clone(),
@@ -72,6 +73,8 @@ impl Adaptor for Clash {
                 protocol_param: ssr_node.protocol_param.clone(),
                 udp: None,
             }),
+
+            Node::Hysteria(_) => None,
         }
     }
 

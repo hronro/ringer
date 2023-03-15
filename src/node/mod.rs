@@ -1,9 +1,12 @@
 use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
 
+pub mod common;
+pub mod hysteria;
 pub mod ss;
 pub mod ssr;
 
+pub use hysteria::HysteriaNode;
 pub use ss::SsNode;
 pub use ssr::SsrNode;
 
@@ -46,4 +49,6 @@ pub enum Node {
     Ss(Box<SsNode>),
     #[serde(rename = "shadowsocksr")]
     Ssr(Box<SsrNode>),
+    #[serde(rename = "hysteria")]
+    Hysteria(Box<HysteriaNode>),
 }

@@ -99,6 +99,8 @@ impl Adaptor for Surge {
             }
 
             Node::Ssr(_) => None,
+
+            Node::Hysteria(_) => None,
         }
     }
 

@@ -47,19 +47,25 @@ impl Adaptor for Clash {
 
     fn convert_node<'a>(&self, node: &'a Node) -> Option<Self::Node<'a>> {
         match node {
-            Node::Ss(ss_node) => Some(ClashProxy::Ss {
-                name: ss_node.get_display_name(),
-                server: ss_node.server.clone(),
-                port: ss_node.server_port,
-                cipher: ss_node.method.get_alias().to_string(),
-                password: ss_node.password.clone(),
-                udp: ss_node.udp,
-                plugin: ss_node
-                    .plugin
-                    .as_ref()
-                    .map(|plugin| plugin.plugin_name().to_string()),
-                plugin_opts: ss_node.plugin.as_ref().map(|plugin| plugin.get_opts_map()),
-            }),
+            Node::Ss(ss_node) => {
+                if ss_node.method.is_aead_2022_cipher() {
+                    None
+                } else {
+                    Some(ClashProxy::Ss {
+                        name: ss_node.get_display_name(),
+                        server: ss_node.server.clone(),
+                        port: ss_node.server_port,
+                        cipher: ss_node.method.get_alias().to_string(),
+                        password: ss_node.password.clone(),
+                        udp: ss_node.udp,
+                        plugin: ss_node
+                            .plugin
+                            .as_ref()
+                            .map(|plugin| plugin.plugin_name().to_string()),
+                        plugin_opts: ss_node.plugin.as_ref().map(|plugin| plugin.get_opts_map()),
+                    })
+                }
+            }
 
             Node::Ssr(ssr_node) => Some(ClashProxy::Ssr {
                 name: ssr_node.get_display_name(),

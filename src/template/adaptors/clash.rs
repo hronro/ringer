@@ -1,9 +1,8 @@
-use std::collections::BTreeMap;
-
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use serde_yaml::to_string;
 
+use crate::node::ss::{ObfsOpts, ObfsType, Plugin as SsPlugin};
 use crate::node::{GetNodeName, Node};
 
 use super::Adaptor;
@@ -22,8 +21,8 @@ pub enum ClashProxy {
         cipher: String,
         password: String,
         udp: Option<bool>,
-        plugin: Option<String>,
-        plugin_opts: Option<BTreeMap<String, String>>,
+        #[serde(flatten)]
+        plugin: Option<ClashSsPlugin>,
     },
 
     #[serde(rename = "ssr", rename_all = "kebab-case")]
@@ -41,6 +40,92 @@ pub enum ClashProxy {
     },
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "plugin", rename_all = "kebab-case")]
+pub enum ClashSsPlugin {
+    Obfs { plugin_opts: ClashSsPluginObfsOpts }, // TODO: add V2Ray plugin
+                                                 // V2rayPlugin {}
+}
+impl TryFrom<SsPlugin> for ClashSsPlugin {
+    type Error = ();
+
+    fn try_from(value: SsPlugin) -> Result<Self, Self::Error> {
+        match value {
+            SsPlugin::SimpleObfs(obfs_opts) => {
+                if let Ok(opts) = obfs_opts.try_into() {
+                    Ok(Self::Obfs { plugin_opts: opts })
+                } else {
+                    Err(())
+                }
+            }
+            _ => Err(()),
+        }
+    }
+}
+impl From<ClashSsPlugin> for SsPlugin {
+    fn from(value: ClashSsPlugin) -> Self {
+        match value {
+            ClashSsPlugin::Obfs { plugin_opts } => Self::SimpleObfs(plugin_opts.into()),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ClashSsPluginObfsOpts {
+    pub mode: Option<ClashSsPluginObfsType>,
+    pub host: Option<String>,
+}
+impl TryFrom<ObfsOpts> for ClashSsPluginObfsOpts {
+    type Error = ConvertObfsOptsToClashObfsOptsError;
+
+    fn try_from(value: ObfsOpts) -> Result<Self, Self::Error> {
+        if value.uri.is_some() {
+            Err(ConvertObfsOptsToClashObfsOptsError::UriUnsupported)
+        } else {
+            Ok(Self {
+                mode: value.obfs.map(Into::into),
+                host: value.host,
+            })
+        }
+    }
+}
+pub enum ConvertObfsOptsToClashObfsOptsError {
+    /// Clash do not support `obfs-uri`
+    UriUnsupported,
+}
+impl From<ClashSsPluginObfsOpts> for ObfsOpts {
+    fn from(value: ClashSsPluginObfsOpts) -> Self {
+        Self {
+            obfs: value.mode.map(Into::into),
+            host: value.host,
+            uri: None,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ClashSsPluginObfsType {
+    Http,
+    Tls,
+}
+impl From<ObfsType> for ClashSsPluginObfsType {
+    fn from(value: ObfsType) -> Self {
+        match value {
+            ObfsType::Http => Self::Http,
+            ObfsType::Tls => Self::Tls,
+        }
+    }
+}
+impl From<ClashSsPluginObfsType> for ObfsType {
+    fn from(value: ClashSsPluginObfsType) -> Self {
+        match value {
+            ClashSsPluginObfsType::Http => Self::Http,
+            ClashSsPluginObfsType::Tls => Self::Tls,
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct Clash;
 impl Adaptor for Clash {
@@ -53,6 +138,20 @@ impl Adaptor for Clash {
             Node::Ss(ss_node) => {
                 if ss_node.method.is_aead_2022_cipher() {
                     None
+                } else if let Some(plugin) = &ss_node.plugin {
+                    if let Ok(clash_ss_plugin) = plugin.clone().try_into() {
+                        Some(ClashProxy::Ss {
+                            name: ss_node.get_display_name(),
+                            server: ss_node.server.clone(),
+                            port: ss_node.server_port,
+                            cipher: ss_node.method.get_alias().to_string(),
+                            password: ss_node.password.clone(),
+                            udp: ss_node.udp,
+                            plugin: Some(clash_ss_plugin),
+                        })
+                    } else {
+                        None
+                    }
                 } else {
                     Some(ClashProxy::Ss {
                         name: ss_node.get_display_name(),
@@ -61,11 +160,7 @@ impl Adaptor for Clash {
                         cipher: ss_node.method.get_alias().to_string(),
                         password: ss_node.password.clone(),
                         udp: ss_node.udp,
-                        plugin: ss_node
-                            .plugin
-                            .as_ref()
-                            .map(|plugin| plugin.plugin_name().to_string()),
-                        plugin_opts: ss_node.plugin.as_ref().map(|plugin| plugin.get_opts_map()),
+                        plugin: None,
                     })
                 }
             }

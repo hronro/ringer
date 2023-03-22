@@ -2,11 +2,10 @@ use anyhow::Result;
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::Uri;
-use log::warn;
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
-use crate::node::ss::{Method as SsMethod, Plugin as SsPlugin};
+use crate::node::ss::Method as SsMethod;
 use crate::node::{Node, SsNode, SsrNode};
 use crate::template::adaptors::clash::ClashProxy;
 
@@ -61,21 +60,10 @@ impl Provider for Clash {
                     cipher,
                     password,
                     udp,
-                    plugin: plugin_name,
-                    plugin_opts,
+                    plugin,
                 } => {
                     let method = SsMethod::from_alias(&cipher)?;
 
-                    let plugin = match plugin_name.map(|plugin_name| {
-                        SsPlugin::from_name_and_opts(plugin_name, plugin_opts.unwrap_or_default())
-                    }) {
-                        Some(Ok(plugin)) => Some(plugin),
-                        Some(Err(_)) => {
-                            warn!("Invalid SS plugin in `{}`, skip it.", &name);
-                            return None;
-                        }
-                        None => None,
-                    };
                     Some(Node::Ss(Box::new(SsNode {
                         id: None,
                         remarks: Some(name),
@@ -85,7 +73,7 @@ impl Provider for Clash {
                         method,
                         udp,
                         udp_over_tcp: None,
-                        plugin,
+                        plugin: plugin.map(Into::into),
                     })))
                 }
                 ClashProxy::Ssr {

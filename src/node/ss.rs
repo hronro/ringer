@@ -320,7 +320,7 @@ impl Method {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum Plugin {
     SimpleObfs(ObfsOpts),
 
@@ -338,7 +338,7 @@ pub enum Plugin {
 impl Plugin {
     pub fn from_name_and_opts(name: String, opts: BTreeMap<String, String>) -> Result<Self> {
         match name.as_str() {
-            "simple-obfs" | "obfs-local" => {
+            "obfs" | "simple-obfs" | "obfs-local" => {
                 let obfs_opts = parse_obfs_plugin_args(&opts)?;
                 Ok(Plugin::SimpleObfs(obfs_opts))
             }
@@ -405,6 +405,7 @@ impl Plugin {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_opts_map(&self) -> BTreeMap<String, String> {
         match self {
             Self::SimpleObfs(obfs_opts) => {
@@ -444,7 +445,7 @@ impl Display for Plugin {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct ObfsOpts {
     pub obfs: Option<ObfsType>,
     pub host: Option<String>,

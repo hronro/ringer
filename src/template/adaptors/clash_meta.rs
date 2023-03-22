@@ -1,14 +1,14 @@
-use std::collections::BTreeMap;
-
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use serde_yaml::to_string;
 
-use crate::node::{hysteria::Speed as HysteriaSpeed, GetNodeName, Node};
+use crate::node::hysteria::Speed as HysteriaSpeed;
+use crate::node::ss::{ObfsOpts, ObfsType, Plugin as SsPlugin};
+use crate::node::{GetNodeName, Node};
 
 use super::Adaptor;
 
-/// Clash Proxy Configuration
+/// Clash.Meta Proxy Configuration
 /// Reference: https://github.com/MetaCubeX/Clash.Meta/blob/Meta/docs/config.yaml
 #[skip_serializing_none]
 #[derive(Debug, Serialize)]
@@ -19,13 +19,11 @@ pub enum ClashMetaProxy<'a> {
         name: String,
         server: &'a str,
         port: u16,
-        cipher: String,
+        cipher: &'a str,
         password: &'a str,
         udp: Option<bool>,
-        udp_over_tcp: Option<bool>,
-        ip_version: Option<ClashMetaIpVersion>,
-        plugin: Option<&'a str>,
-        plugin_opts: Option<BTreeMap<String, String>>,
+        #[serde(flatten)]
+        plugin: Option<ClashMetaSsPlugin>,
     },
 
     #[serde(rename = "ssr", rename_all = "kebab-case")]
@@ -61,6 +59,94 @@ pub enum ClashMetaProxy<'a> {
     },
 }
 
+#[derive(Debug, Serialize)]
+#[serde(tag = "plugin", rename_all = "kebab-case")]
+pub enum ClashMetaSsPlugin {
+    Obfs {
+        plugin_opts: ClashMetaSsPluginObfsOpts,
+    }, // TODO: add V2Ray plugin
+       // V2rayPlugin {}
+}
+impl TryFrom<SsPlugin> for ClashMetaSsPlugin {
+    type Error = ();
+
+    fn try_from(value: SsPlugin) -> Result<Self, Self::Error> {
+        match value {
+            SsPlugin::SimpleObfs(obfs_opts) => {
+                if let Ok(opts) = obfs_opts.try_into() {
+                    Ok(Self::Obfs { plugin_opts: opts })
+                } else {
+                    Err(())
+                }
+            }
+            _ => Err(()),
+        }
+    }
+}
+impl From<ClashMetaSsPlugin> for SsPlugin {
+    fn from(value: ClashMetaSsPlugin) -> Self {
+        match value {
+            ClashMetaSsPlugin::Obfs { plugin_opts } => Self::SimpleObfs(plugin_opts.into()),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct ClashMetaSsPluginObfsOpts {
+    pub mode: Option<ClashMetaSsPluginObfsType>,
+    pub host: Option<String>,
+}
+impl TryFrom<ObfsOpts> for ClashMetaSsPluginObfsOpts {
+    type Error = ConvertObfsOptsToClashObfsOptsError;
+
+    fn try_from(value: ObfsOpts) -> Result<Self, Self::Error> {
+        if value.uri.is_some() {
+            Err(ConvertObfsOptsToClashObfsOptsError::UriUnsupported)
+        } else {
+            Ok(Self {
+                mode: value.obfs.map(Into::into),
+                host: value.host,
+            })
+        }
+    }
+}
+pub enum ConvertObfsOptsToClashObfsOptsError {
+    /// Clash do not support `obfs-uri`
+    UriUnsupported,
+}
+impl From<ClashMetaSsPluginObfsOpts> for ObfsOpts {
+    fn from(value: ClashMetaSsPluginObfsOpts) -> Self {
+        Self {
+            obfs: value.mode.map(Into::into),
+            host: value.host,
+            uri: None,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ClashMetaSsPluginObfsType {
+    Http,
+    Tls,
+}
+impl From<ObfsType> for ClashMetaSsPluginObfsType {
+    fn from(value: ObfsType) -> Self {
+        match value {
+            ObfsType::Http => Self::Http,
+            ObfsType::Tls => Self::Tls,
+        }
+    }
+}
+impl From<ClashMetaSsPluginObfsType> for ObfsType {
+    fn from(value: ClashMetaSsPluginObfsType) -> Self {
+        match value {
+            ClashMetaSsPluginObfsType::Http => Self::Http,
+            ClashMetaSsPluginObfsType::Tls => Self::Tls,
+        }
+    }
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -81,18 +167,33 @@ impl Adaptor for ClashMeta {
 
     fn convert_node<'a>(&self, node: &'a Node) -> Option<Self::Node<'a>> {
         match node {
-            Node::Ss(ss_node) => Some(ClashMetaProxy::Ss {
-                name: ss_node.get_display_name(),
-                server: &ss_node.server,
-                port: ss_node.server_port,
-                cipher: ss_node.method.get_alias().to_string(),
-                password: &ss_node.password,
-                udp: ss_node.udp,
-                udp_over_tcp: ss_node.udp_over_tcp,
-                ip_version: None,
-                plugin: ss_node.plugin.as_ref().map(|plugin| plugin.plugin_name()),
-                plugin_opts: ss_node.plugin.as_ref().map(|plugin| plugin.get_opts_map()),
-            }),
+            Node::Ss(ss_node) => {
+                if let Some(plugin) = &ss_node.plugin {
+                    if let Ok(clash_ss_plugin) = plugin.clone().try_into() {
+                        Some(ClashMetaProxy::Ss {
+                            name: ss_node.get_display_name(),
+                            server: &ss_node.server,
+                            port: ss_node.server_port,
+                            cipher: ss_node.method.get_alias(),
+                            password: &ss_node.password,
+                            udp: ss_node.udp,
+                            plugin: Some(clash_ss_plugin),
+                        })
+                    } else {
+                        None
+                    }
+                } else {
+                    Some(ClashMetaProxy::Ss {
+                        name: ss_node.get_display_name(),
+                        server: &ss_node.server,
+                        port: ss_node.server_port,
+                        cipher: ss_node.method.get_alias(),
+                        password: &ss_node.password,
+                        udp: ss_node.udp,
+                        plugin: None,
+                    })
+                }
+            }
 
             Node::Ssr(ssr_node) => Some(ClashMetaProxy::Ssr {
                 name: ssr_node.get_display_name(),

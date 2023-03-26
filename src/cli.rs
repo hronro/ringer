@@ -190,7 +190,6 @@ pub async fn get_config() -> Result<MergedConfig> {
         &config_file_templates
     );
 
-    // TODO: add user-specified templates
     let templates = {
         let template_futures = config_file_templates
             .into_iter()

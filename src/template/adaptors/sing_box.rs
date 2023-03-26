@@ -22,7 +22,7 @@ pub enum SingBoxNode<'a> {
         password: &'a str,
         plugin: Option<&'a str>,
         plugin_opts: Option<String>,
-        network: Option<&'a str>,
+        network: Option<&'static str>,
         udp_over_tcp: Option<bool>,
     },
 
@@ -39,7 +39,7 @@ pub enum SingBoxNode<'a> {
         obfs_param: Option<&'a str>,
         protocol: &'a str,
         protocol_param: Option<&'a str>,
-        network: Option<&'a str>,
+        network: Option<&'static str>,
     },
 
     /// Hysteria outbound
@@ -56,6 +56,25 @@ pub enum SingBoxNode<'a> {
         obfs: Option<&'a str>,
         auth_str: Option<&'a str>,
         tls: SingBoxTlsOptions<'a>,
+    },
+
+    /// Wireguard outbound
+    /// Reference: https://sing-box.sagernet.org/configuration/outbound/wireguard
+    #[serde(rename = "wireguard")]
+    Wireguard {
+        tag: String,
+        server: &'a str,
+        server_port: u16,
+        system_interface: Option<bool>,
+        interface_name: Option<String>,
+        local_address: Vec<String>,
+        private_key: &'a str,
+        peer_public_key: &'a str,
+        pre_shared_key: Option<&'a str>,
+        reserved: Option<[u8; 3]>,
+        workers: Option<u8>,
+        mtu: Option<u32>,
+        network: Option<&'static str>,
     },
 }
 
@@ -156,6 +175,28 @@ impl Adaptor for SingBox {
                     insecure: hysteria_node.tls.insecure,
                     alpn: hysteria_node.tls.alpn.as_deref(),
                 },
+            }),
+
+            Node::Wireguard(wireguard_node) => Some(SingBoxNode::Wireguard {
+                tag: wireguard_node.get_display_name(),
+                server: &wireguard_node.server,
+                server_port: wireguard_node.port,
+                system_interface: None,
+                interface_name: None,
+                local_address: [
+                    wireguard_node.ip.map(|ip| ip.to_string()),
+                    wireguard_node.ipv6.map(|ipv6| ipv6.to_string()),
+                ]
+                .into_iter()
+                .flatten()
+                .collect(),
+                private_key: &wireguard_node.private_key,
+                peer_public_key: &wireguard_node.public_key,
+                pre_shared_key: wireguard_node.pre_shared_key.as_deref(),
+                reserved: wireguard_node.reserved,
+                workers: None,
+                mtu: None,
+                network: None,
             }),
         }
     }

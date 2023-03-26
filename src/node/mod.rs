@@ -5,10 +5,12 @@ pub mod common;
 pub mod hysteria;
 pub mod ss;
 pub mod ssr;
+pub mod wireguard;
 
 pub use hysteria::HysteriaNode;
 pub use ss::SsNode;
 pub use ssr::SsrNode;
+pub use wireguard::WireguardNode;
 
 #[enum_dispatch]
 pub trait GetNodeName {
@@ -51,4 +53,6 @@ pub enum Node {
     Ssr(Box<SsrNode>),
     #[serde(rename = "hysteria")]
     Hysteria(Box<HysteriaNode>),
+    #[serde(rename = "wireguard")]
+    Wireguard(WireguardNode),
 }

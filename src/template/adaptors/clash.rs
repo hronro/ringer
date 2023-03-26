@@ -179,6 +179,8 @@ impl Adaptor for Clash {
             }),
 
             Node::Hysteria(_) => None,
+
+            Node::Wireguard(_) => None,
         }
     }
 

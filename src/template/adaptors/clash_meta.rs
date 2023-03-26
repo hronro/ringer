@@ -57,6 +57,22 @@ pub enum ClashMetaProxy<'a> {
         disable_mtu_discovery: Option<bool>,
         fast_open: Option<bool>,
     },
+
+    #[serde(rename = "wireguard", rename_all = "kebab-case")]
+    Wireguard {
+        name: String,
+        server: &'a str,
+        port: u16,
+        ip: Option<String>,
+        ipv6: Option<String>,
+        private_key: &'a str,
+        public_key: &'a str,
+        pre_shared_key: Option<&'a str>,
+        reserved: Option<[u8; 3]>,
+        mtu: Option<u32>,
+        udp: Option<bool>,
+        persistent_keepalive: Option<u32>,
+    },
 }
 
 #[derive(Debug, Serialize)]
@@ -228,6 +244,21 @@ impl Adaptor for ClashMeta {
                 skip_cert_verify: hysteria_node.tls.insecure,
                 disable_mtu_discovery: None,
                 fast_open: None,
+            }),
+
+            Node::Wireguard(wireguard_node) => Some(ClashMetaProxy::Wireguard {
+                name: wireguard_node.get_display_name(),
+                server: &wireguard_node.server,
+                port: wireguard_node.port,
+                ip: wireguard_node.ip.map(|ip| ip.to_string()),
+                ipv6: wireguard_node.ipv6.map(|ipv6| ipv6.to_string()),
+                private_key: &wireguard_node.private_key,
+                public_key: &wireguard_node.public_key,
+                pre_shared_key: wireguard_node.pre_shared_key.as_deref(),
+                reserved: wireguard_node.reserved,
+                mtu: None,
+                udp: None,
+                persistent_keepalive: None,
             }),
         }
     }

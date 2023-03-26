@@ -8,9 +8,11 @@ use crate::template::TemplateArgs;
 
 mod get_nodes;
 mod get_nodes_names;
+mod get_surge_wg_nodes;
 
 pub use get_nodes::GetNodes;
 pub use get_nodes_names::GetNodesNames;
+pub use get_surge_wg_nodes::{gen_wireguard_node_id, GetSurgeWgNodes};
 
 pub trait RingerFunctions {
     const NAME: &'static str;

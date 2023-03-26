@@ -227,6 +227,10 @@ impl<'a> RenderEngine<'a> {
             functions::GetNodesNames::NAME,
             functions::GetNodesNames::new(args),
         );
+        tera.register_function(
+            functions::GetSurgeWgNodes::NAME,
+            functions::GetSurgeWgNodes::new(args),
+        );
 
         Self {
             templates,

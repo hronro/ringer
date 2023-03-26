@@ -1,3 +1,4 @@
+use std::hash::Hasher;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Context, Result};
@@ -78,5 +79,30 @@ pub async fn load_content_from_url(path: Path) -> Result<Bytes> {
             let contents = read(path_buf).await.context(read_err_msg)?;
             Ok(Bytes::from(contents))
         }
+    }
+}
+
+pub struct Blake3Hasher(blake3::Hasher);
+impl Blake3Hasher {
+    pub fn new() -> Self {
+        Self(blake3::Hasher::new())
+    }
+
+    pub fn get_hash(self) -> blake3::Hash {
+        self.0.finalize()
+    }
+}
+impl Default for Blake3Hasher {
+    fn default() -> Self {
+        Self(blake3::Hasher::new())
+    }
+}
+impl Hasher for Blake3Hasher {
+    fn write(&mut self, bytes: &[u8]) {
+        self.0.update(bytes);
+    }
+
+    fn finish(&self) -> u64 {
+        self.0.count()
     }
 }

@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use crate::node::ss::{ObfsOpts, Plugin as SsPlugin};
 use crate::node::{GetNodeName, Node};
+use crate::template::functions::gen_wireguard_node_id;
 
 use super::Adaptor;
 
@@ -20,6 +21,10 @@ pub enum ProxyType<'a> {
         password: &'a str,
         obfs: Option<&'a ObfsOpts>,
         udp_relay: bool,
+    },
+
+    Wireguard {
+        section_name: String,
     },
 }
 impl<'a> Display for ProxyType<'a> {
@@ -51,6 +56,10 @@ impl<'a> Display for ProxyType<'a> {
                         write!(f, ", obfs-uri={uri}")?;
                     }
                 }
+            }
+
+            Self::Wireguard { section_name } => {
+                write!(f, "wireguard, section-name={section_name}")?;
             }
         }
 
@@ -101,6 +110,13 @@ impl Adaptor for Surge {
             Node::Ssr(_) => None,
 
             Node::Hysteria(_) => None,
+
+            Node::Wireguard(wireguard_node) => Some(SurgeProxy {
+                name: wireguard_node.get_display_name(),
+                proxy: ProxyType::Wireguard {
+                    section_name: gen_wireguard_node_id(wireguard_node),
+                },
+            }),
         }
     }
 

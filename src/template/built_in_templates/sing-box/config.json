@@ -41,7 +41,7 @@
         {
             "type": "selector",
             "tag": "proxy-out",
-            "outbounds": {{ ["direct-out"] | concat(with = get_nodes_names()) | json_encode }}
+            "outbounds": {{ ["direct-out"] | concat(with = get_nodes_names(type = "sing-box")) | json_encode }}
         },
         {
             "type": "direct",

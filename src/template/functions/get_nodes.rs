@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use serde_json::Value;
+use serde_json::{json, Value};
 use tera::{Error, Function};
 
 use crate::template::adaptors::{
@@ -21,15 +21,19 @@ impl<'a> RingerFunctions for GetNodes<'a> {
 }
 impl<'a> Function for GetNodes<'a> {
     fn call(&self, args: &HashMap<String, Value>) -> tera::Result<Value> {
-        let adaptor = get_adaptor_from_args(args).map_err(|err| Error::msg(err.to_string()))?;
-
-        let options = NodesSerializationOptions::from_function_args(Self::NAME, args)?;
-
         let nodes = get_filtered_nodes_by_function_args(Self::NAME, self.0, args)?;
 
-        Ok(Value::String(
-            adaptor.nodes_to_string(nodes.into_iter(), options),
-        ))
+        if let Some(adaptor) =
+            get_adaptor_from_args(args).map_err(|err| Error::msg(err.to_string()))?
+        {
+            let options = NodesSerializationOptions::from_function_args(Self::NAME, args)?;
+            Ok(Value::String(
+                adaptor.nodes_to_string(nodes.into_iter(), options),
+            ))
+        } else {
+            let value = nodes.collect::<Vec<_>>();
+            Ok(json!(value))
+        }
     }
 
     fn is_safe(&self) -> bool {

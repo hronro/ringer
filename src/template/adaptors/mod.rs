@@ -101,14 +101,27 @@ pub enum Adaptors {
     SingBox(sing_box::SingBox),
     Surge(surge::Surge),
 }
+impl Adaptors {
+    /// Determine whether the adaptor supports the node.
+    pub fn support_node(&self, node: &Node) -> bool {
+        match self {
+            Self::Clash(adaptor) => adaptor.convert_node(node).is_some(),
+            Self::ClashMeta(adaptor) => adaptor.convert_node(node).is_some(),
+            Self::SingBox(adaptor) => adaptor.convert_node(node).is_some(),
+            Self::Surge(adaptor) => adaptor.convert_node(node).is_some(),
+        }
+    }
+}
 
-pub fn get_adaptor_from_args(args: &HashMap<String, Value>) -> Result<Adaptors> {
+pub fn get_adaptor_from_args(args: &HashMap<String, Value>) -> Result<Option<Adaptors>> {
     if let Some(Value::String(adaptor_name_from_args)) = args.get("type") {
         match adaptor_name_from_args.as_str() {
-            clash::Clash::ADAPTOR_NAME => Ok(Adaptors::Clash(Default::default())),
-            clash_meta::ClashMeta::ADAPTOR_NAME => Ok(Adaptors::ClashMeta(Default::default())),
-            sing_box::SingBox::ADAPTOR_NAME => Ok(Adaptors::SingBox(Default::default())),
-            surge::Surge::ADAPTOR_NAME => Ok(Adaptors::Surge(Default::default())),
+            clash::Clash::ADAPTOR_NAME => Ok(Some(Adaptors::Clash(Default::default()))),
+            clash_meta::ClashMeta::ADAPTOR_NAME => {
+                Ok(Some(Adaptors::ClashMeta(Default::default())))
+            }
+            sing_box::SingBox::ADAPTOR_NAME => Ok(Some(Adaptors::SingBox(Default::default()))),
+            surge::Surge::ADAPTOR_NAME => Ok(Some(Adaptors::Surge(Default::default()))),
 
             _ => Err(anyhow!(
                 "Unknown adaptor name: `{}`",
@@ -116,6 +129,6 @@ pub fn get_adaptor_from_args(args: &HashMap<String, Value>) -> Result<Adaptors> 
             )),
         }
     } else {
-        Err(anyhow!("Can't get adaptor type"))
+        Ok(None)
     }
 }

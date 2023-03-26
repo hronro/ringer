@@ -32,7 +32,7 @@ proxy-groups:
     name: Proxy
     proxies:
       - DIRECT
-{%- for node_name in get_nodes_names() %}
+{%- for node_name in get_nodes_names(type = "clash") %}
       - {{ node_name -}}
 {% endfor %}
 

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::fmt::Display;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use base64_simd::URL_SAFE_NO_PAD as base64_url_no_pad;
 use itertools::Itertools;
 use log::trace;
@@ -57,7 +57,9 @@ impl SsNode {
             (method, password)
         } else {
             let encoded_userinfo = url.username();
-            let decoded_userinfo_bytes = base64_url_no_pad.decode_to_vec(encoded_userinfo)?;
+            let decoded_userinfo_bytes = base64_url_no_pad
+                .decode_to_vec(encoded_userinfo)
+                .context("failed to decode base64 for userinfo")?;
             let decoded_userinfo = String::from_utf8_lossy(&decoded_userinfo_bytes);
             trace!("decoded SS link userinfo: {}", &decoded_userinfo);
 
@@ -100,7 +102,8 @@ impl SsNode {
                 })
                 .collect::<BTreeMap<String, String>>();
 
-            let plugin = Plugin::from_name_and_opts(plugin_str.to_string(), plugin_opts)?;
+            let plugin = Plugin::from_name_and_opts(plugin_str.to_string(), plugin_opts)
+                .context("failed to parse SS plugin")?;
 
             Some(plugin)
         } else {
@@ -339,7 +342,8 @@ impl Plugin {
     pub fn from_name_and_opts(name: String, opts: BTreeMap<String, String>) -> Result<Self> {
         match name.as_str() {
             "obfs" | "simple-obfs" | "obfs-local" => {
-                let obfs_opts = parse_obfs_plugin_args(&opts)?;
+                let obfs_opts =
+                    parse_obfs_plugin_args(&opts).context("failed to parse obfs_opts")?;
                 Ok(Plugin::SimpleObfs(obfs_opts))
             }
 

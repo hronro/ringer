@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use log::Level as LogLevel;
 use serde::Deserialize;
 use url::Url;
@@ -185,13 +185,15 @@ impl ConfigFile {
 
                     match providers {
                         ConfigFileProviderOrProviders::Provider(ref mut p) => {
-                            let new_url = url.join(p.get_url().to_string().as_str())?;
-                            p.set_url(new_url.as_str().parse().unwrap());
+                            if let Ok(new_url) = url.join(p.get_url().to_string().as_str()) {
+                                p.set_url(new_url.as_str().parse().unwrap());
+                            }
                         }
                         ConfigFileProviderOrProviders::Providers(ref mut ps) => {
                             for ref mut p in ps {
-                                let new_url = url.join(p.get_url().to_string().as_str())?;
-                                p.set_url(new_url.as_str().parse().unwrap());
+                                if let Ok(new_url) = url.join(p.get_url().to_string().as_str()) {
+                                    p.set_url(new_url.as_str().parse().unwrap());
+                                };
                             }
                         }
                     }
@@ -204,13 +206,15 @@ impl ConfigFile {
 
                     match templates {
                         ConfigFileTemplateOrTemplates::Template(ref mut t) => {
-                            let new_url = url.join(t.path.to_string().as_str())?;
-                            t.path = new_url.as_str().parse().unwrap();
+                            if let Ok(new_url) = url.join(t.path.to_string().as_str()) {
+                                t.path = new_url.as_str().parse().unwrap();
+                            };
                         }
                         ConfigFileTemplateOrTemplates::Templates(ref mut ts) => {
                             for ref mut t in ts {
-                                let new_url = url.join(t.path.to_string().as_str())?;
-                                t.path = new_url.as_str().parse().unwrap();
+                                if let Ok(new_url) = url.join(t.path.to_string().as_str()) {
+                                    t.path = new_url.as_str().parse().unwrap();
+                                };
                             }
                         }
                     }
@@ -225,7 +229,8 @@ impl ConfigFile {
 
                     match templates {
                         ConfigFileTemplateOrTemplates::Template(ref mut t) => {
-                            let t_path = parse_string_to_path(t.path.clone())?;
+                            let t_path = parse_string_to_path(t.path.clone())
+                                .context("failed to parse template path in the config file")?;
                             if let Path::PathBuf(t_path) = t_path {
                                 let mut new_path = path_buf.parent().unwrap().to_path_buf();
                                 new_path.push(t_path);
@@ -234,7 +239,8 @@ impl ConfigFile {
                         }
                         ConfigFileTemplateOrTemplates::Templates(ref mut ts) => {
                             for ref mut t in ts {
-                                let t_path = parse_string_to_path(t.path.clone())?;
+                                let t_path = parse_string_to_path(t.path.clone())
+                                    .context("failed to parse template path in the config file")?;
                                 if let Path::PathBuf(t_path) = t_path {
                                     let mut new_path = path_buf.parent().unwrap().to_path_buf();
                                     new_path.push(t_path);
@@ -316,9 +322,12 @@ impl ConfigFileTemplate {
                 })
         })?;
 
-        let path = parse_string_to_path(self.path)?;
+        let path =
+            parse_string_to_path(self.path).context("failed to parse path in the template")?;
 
-        let content = load_content_from_url(path).await?;
+        let content = load_content_from_url(path)
+            .await
+            .context("failed to load template")?;
 
         Ok(Template {
             name: self.name,
@@ -340,7 +349,7 @@ pub enum ConfigFileTemplateOrTemplates {
 /// Load a config file from an URL.
 pub async fn load_config_file(path: Path) -> Result<ConfigFile> {
     let contents = load_content_from_url(path).await?;
-    Ok(toml::from_slice(&contents)?)
+    toml::from_slice(&contents).context("failed to parse config file")
 }
 
 /// The final config merged from CLI arguments and config file.

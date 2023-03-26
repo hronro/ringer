@@ -1,6 +1,6 @@
 #![warn(clippy::all)]
 
-use anyhow::{anyhow, Error, Result};
+use anyhow::{anyhow, Context, Error, Result};
 use futures::future::try_join_all;
 use log::{debug, info, trace, warn};
 use once_cell::sync::OnceCell;
@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
         .map_err(|_| anyhow!("can't set CONFIG!"))?;
     let config = CONFIG.get().unwrap();
 
-    init_logger_with_level(config.log_level)?;
+    init_logger_with_level(config.log_level).context("failed to init logger")?;
 
     debug!("Config:\n{:#?}", &config);
 
@@ -43,14 +43,26 @@ async fn main() -> Result<()> {
             "start fetching content of provider `{}`...",
             provider.get_display_name(),
         );
-        let content = provider.fetch_content().await?;
+        let content = provider.fetch_content().await.with_context(|| {
+            format!(
+                "failed to fetch content of provider:\n{}",
+                provider.get_display_name()
+            )
+        })?;
         trace!(
             "content of provider `{}`:\n{:?}",
             provider.get_display_name(),
             &content
         );
 
-        let nodes = provider.parse_nodes_from_content(content)?;
+        let nodes = provider
+            .parse_nodes_from_content(content)
+            .with_context(|| {
+                format!(
+                    "failed to parse nodes of provider:\n{}",
+                    provider.get_display_name()
+                )
+            })?;
 
         debug!(
             "getting nodes of provider `{}`\n{:?}",
@@ -87,7 +99,9 @@ async fn main() -> Result<()> {
 
     let mut render_engine = RenderEngine::new(template_args, &config.templates);
     info!("start rendering templates");
-    render_engine.render(&config.output_directory)?;
+    render_engine
+        .render(&config.output_directory)
+        .context("failed to render templates")?;
     info!("rendering templates complete");
 
     eprintln!("✅ Done!");

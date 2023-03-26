@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use base64_simd::STANDARD as base64;
 use bytes::Bytes;
@@ -43,7 +43,9 @@ impl Provider for Ssr {
     }
 
     fn parse_nodes_from_content(&self, content: Bytes) -> Result<Vec<Node>> {
-        let decoded_content = base64.decode_to_vec(content)?;
+        let decoded_content = base64
+            .decode_to_vec(content)
+            .context("failed to decode base64 from the provider content")?;
         let decoded_string = String::from_utf8_lossy(&decoded_content);
         trace!(
             "decoded content of provider `{}`:\n{:?}",
@@ -62,7 +64,8 @@ impl Provider for Ssr {
             })
             .map(|link| match link.scheme() {
                 "ss" => {
-                    let mut ss_node = SsNode::from_url(&link)?;
+                    let mut ss_node = SsNode::from_url(&link)
+                        .with_context(|| format!("failed to parse SS node from url:\n{link}"))?;
 
                     if let Some(ss_udp) = self.options.ss_udp {
                         ss_node.udp = Some(ss_udp);
@@ -76,7 +79,8 @@ impl Provider for Ssr {
                 }
 
                 "ssr" => {
-                    let mut ssr_node = SsrNode::from_url(&link)?;
+                    let mut ssr_node = SsrNode::from_url(&link)
+                        .with_context(|| format!("failed to parse SSR node from URL:\n{link}"))?;
 
                     if let Some(ssr_udpport) = self.options.ssr_udpport {
                         ssr_node.udpport = Some(ssr_udpport);

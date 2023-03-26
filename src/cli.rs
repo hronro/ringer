@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::{ArgAction, Parser, ValueEnum};
 use futures::future::try_join_all;
 use http::Uri;
@@ -93,10 +93,15 @@ pub async fn get_config() -> Result<MergedConfig> {
 
     let (providers, standalone_nodes, sort_rules, config_file_templates, output_directory) =
         if let Some(config_file_path_string) = cli_config.config {
-            let config_file_path = parse_string_to_path(config_file_path_string)?;
+            let config_file_path = parse_string_to_path(config_file_path_string)
+                .context("failed to parse config file path")?;
             let config_file = {
-                let mut config_file = load_config_file(config_file_path.clone()).await?;
-                config_file.rewrite_relative_path(config_file_path)?;
+                let mut config_file = load_config_file(config_file_path.clone())
+                    .await
+                    .context("failed to load config file")?;
+                config_file
+                    .rewrite_relative_path(config_file_path)
+                    .context("failed to rewrite relative path in the config file")?;
                 config_file
             };
 
@@ -191,7 +196,9 @@ pub async fn get_config() -> Result<MergedConfig> {
             .into_iter()
             .map(|cft| async { cft.into_tempalte().await });
 
-        let mut templates = try_join_all(template_futures).await?;
+        let mut templates = try_join_all(template_futures)
+            .await
+            .context("failed to fetch templates")?;
 
         if matches!(cli_config.use_built_in_templates, Some(true))
             || (cli_config.use_built_in_templates.is_none() && templates.is_empty())

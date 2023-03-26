@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use bytes::Bytes;
 use http::uri::Uri;
 use hyper::{Body, Client};
@@ -38,8 +38,16 @@ pub async fn load_content_from_url(path: Path) -> Result<Bytes> {
         Path::Url(url) => match url.scheme_str() {
             Some("http") => {
                 let client = Client::new();
-                let resp = client.get(url).await?;
-                Ok(hyper::body::to_bytes(resp.into_body()).await?)
+                let resource_string = format!("remote resource `{url}`");
+                let resp = client
+                    .get(url)
+                    .await
+                    .with_context(|| format!("failed to fetch {resource_string}"))?;
+                Ok(hyper::body::to_bytes(resp.into_body())
+                    .await
+                    .with_context(|| {
+                        format!("failed to convert response body to bytes in {resource_string}")
+                    })?)
             }
 
             Some("https") => {
@@ -50,15 +58,24 @@ pub async fn load_content_from_url(path: Path) -> Result<Bytes> {
                     .enable_http2()
                     .build();
                 let client: Client<_, Body> = Client::builder().build(https);
-                let resp = client.get(url).await?;
-                Ok(hyper::body::to_bytes(resp.into_body()).await?)
+                let resource_string = format!("remote resource `{url}`");
+                let resp = client
+                    .get(url)
+                    .await
+                    .with_context(|| format!("failed to fetch {resource_string}"))?;
+                Ok(hyper::body::to_bytes(resp.into_body())
+                    .await
+                    .with_context(|| {
+                        format!("failed to convert response body to bytes in {resource_string}")
+                    })?)
             }
 
             _ => unreachable!(),
         },
 
         Path::PathBuf(path_buf) => {
-            let contents = read(path_buf).await?;
+            let read_err_msg = format!("failed to read local file `{}`", path_buf.display());
+            let contents = read(path_buf).await.context(read_err_msg)?;
             Ok(Bytes::from(contents))
         }
     }

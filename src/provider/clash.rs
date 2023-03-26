@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::Uri;
@@ -42,7 +42,8 @@ impl Provider for Clash {
     }
 
     fn parse_nodes_from_content(&self, content: Bytes) -> Result<Vec<Node>> {
-        let clash_config: ClashConfiguration = serde_yaml::from_slice(&content)?;
+        let clash_config: ClashConfiguration = serde_yaml::from_slice(&content)
+            .context("failed to parse the provider content as Clash configuration yaml")?;
         Ok(clash_config
             .proxies
             .into_iter()

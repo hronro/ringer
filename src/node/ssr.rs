@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use base64_simd::URL_SAFE_NO_PAD as base64_url_no_pad;
 use log::trace;
 use serde::{Deserialize, Serialize};
@@ -30,8 +30,9 @@ impl SsrNode {
     pub fn from_url(url: &Url) -> Result<Self> {
         trace!("SSR link: {}", url.to_string());
         if let Some(encoded_content) = url.host() {
-            let decoded_host_bytes =
-                base64_url_no_pad.decode_to_vec(encoded_content.to_string())?;
+            let decoded_host_bytes = base64_url_no_pad
+                .decode_to_vec(encoded_content.to_string())
+                .context("failed to decode base64 for the SSR link")?;
             let decoded_host = String::from_utf8_lossy(&decoded_host_bytes);
             trace!("decoded SSR link: {}", &decoded_host);
 
@@ -42,17 +43,24 @@ impl SsrNode {
             let part1_parts = ssr_url_part1.split(':').collect::<Vec<&str>>();
             let (server, server_port, protocol, method, obfs, password) = (
                 part1_parts[0].to_string(),
-                part1_parts[1].parse::<u16>()?,
+                part1_parts[1]
+                    .parse::<u16>()
+                    .context("failed to parse server port")?,
                 part1_parts[2].to_string(),
                 part1_parts[3].to_string(),
                 part1_parts[4].to_string(),
-                String::from_utf8_lossy(&base64_url_no_pad.decode_to_vec(part1_parts[5])?)
-                    .to_string(),
+                String::from_utf8_lossy(
+                    &base64_url_no_pad
+                        .decode_to_vec(part1_parts[5])
+                        .context("failed to decode base64 for the password")?,
+                )
+                .to_string(),
             );
 
             let (remarks, obfs_param, protocol_param, udpport, uot) =
                 if let Some(ssr_url_part2) = ssr_url_part2 {
-                    let query: HashMap<String, String> = serde_urlencoded::from_str(ssr_url_part2)?;
+                    let query: HashMap<String, String> = serde_urlencoded::from_str(ssr_url_part2)
+                        .context("failed to parse qeury")?;
 
                     (
                         query.get("remarks").and_then(|base64remarks| {

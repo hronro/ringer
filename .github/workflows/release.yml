@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@1.67
+        uses: dtolnay/rust-toolchain@1.68
         with:
           targets: ${{ matrix.target }}
 
@@ -59,7 +59,7 @@ jobs:
           echo '/usr/local/opt/gnu-tar/libexec/gnubin' >> $GITHUB_PATH
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@1.67
+        uses: dtolnay/rust-toolchain@1.68
         with:
           targets: aarch64-apple-darwin
 
@@ -87,7 +87,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@1.67
+        uses: dtolnay/rust-toolchain@1.68
 
       - name: Build
         timeout-minutes: 60

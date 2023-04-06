@@ -1,3 +1,4 @@
+use base64_simd::STANDARD as base64;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use serde_yaml::to_string;
@@ -68,7 +69,7 @@ pub enum ClashMetaProxy<'a> {
         private_key: &'a str,
         public_key: &'a str,
         pre_shared_key: Option<&'a str>,
-        reserved: Option<[u8; 3]>,
+        reserved: Option<String>,
         mtu: Option<u32>,
         udp: Option<bool>,
         persistent_keepalive: Option<u32>,
@@ -255,7 +256,9 @@ impl Adaptor for ClashMeta {
                 private_key: &wireguard_node.private_key,
                 public_key: &wireguard_node.public_key,
                 pre_shared_key: wireguard_node.pre_shared_key.as_deref(),
-                reserved: wireguard_node.reserved,
+                reserved: wireguard_node
+                    .reserved
+                    .map(|reserved| base64.encode_to_string(reserved)),
                 mtu: None,
                 udp: None,
                 persistent_keepalive: None,

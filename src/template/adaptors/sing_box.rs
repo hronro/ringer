@@ -184,8 +184,8 @@ impl Adaptor for SingBox {
                 system_interface: None,
                 interface_name: None,
                 local_address: [
-                    wireguard_node.ip.map(|ip| ip.to_string()),
-                    wireguard_node.ipv6.map(|ipv6| ipv6.to_string()),
+                    wireguard_node.ip.map(|ip| format!("{ip}/32")),
+                    wireguard_node.ipv6.map(|ipv6| format!("{ipv6}/128")),
                 ]
                 .into_iter()
                 .flatten()

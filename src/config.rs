@@ -348,8 +348,12 @@ pub enum ConfigFileTemplateOrTemplates {
 
 /// Load a config file from an URL.
 pub async fn load_config_file(path: Path) -> Result<ConfigFile> {
-    let contents = load_content_from_url(path).await?;
-    toml::from_slice(&contents).context("failed to parse config file")
+    let contents_bytes = load_content_from_url(path).await?;
+
+    let contents = std::str::from_utf8(&contents_bytes)
+        .context("failed to convert config file contents to string.")?;
+
+    toml::from_str(contents).context("failed to parse config file")
 }
 
 /// The final config merged from CLI arguments and config file.

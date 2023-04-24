@@ -1,9 +1,10 @@
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use base64_simd::STANDARD as base64;
+use base64_simd::STANDARD_NO_PAD as base64_no_pad;
 use bytes::Bytes;
 use http::Uri;
-use log::trace;
+use log::{debug, trace};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -42,10 +43,25 @@ impl Provider for Ssr {
         self.url = url;
     }
 
+    // Reference: https://github.com/shadowsocksr-backup/shadowsocks-rss/wiki/Subscribe-服务器订阅接口文档
     fn parse_nodes_from_content(&self, content: Bytes) -> Result<Vec<Node>> {
-        let decoded_content = base64
-            .decode_to_vec(content)
-            .context("failed to decode base64 from the provider content")?;
+        let decoded_content = match base64
+            .decode_to_vec(&content)
+            .context("failed to decode base64 from the provider content")
+        {
+            Ok(decoded_content) => Ok(decoded_content),
+            Err(e) => {
+                // According to the SSR wiki, the base64 string should not be padded.
+                // However, some providers do not follow this rule, so we need to try
+                // to decode without padding.
+                debug!("failed to decode SSR subscription, now try to decode without padding");
+                if let Ok(decoded_content) = base64_no_pad.decode_to_vec(&content) {
+                    Ok(decoded_content)
+                } else {
+                    Err(e)
+                }
+            }
+        }?;
         let decoded_string = String::from_utf8_lossy(&decoded_content);
         trace!(
             "decoded content of provider `{}`:\n{:?}",

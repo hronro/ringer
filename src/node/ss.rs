@@ -333,7 +333,7 @@ pub enum Plugin {
     Kcptun,
     V2ray,
 
-    UnknownPlugin {
+    Unknown {
         plugin_name: String,
         plugin_opts: Option<BTreeMap<String, String>>,
     },
@@ -353,7 +353,7 @@ impl Plugin {
             "kcptun" => Ok(Plugin::Kcptun),
             "v2ray" | "v2ray-plugin" => Ok(Plugin::V2ray),
 
-            _ => Ok(Plugin::UnknownPlugin {
+            _ => Ok(Plugin::Unknown {
                 plugin_name: name,
                 plugin_opts: if opts.is_empty() { None } else { Some(opts) },
             }),
@@ -367,7 +367,7 @@ impl Plugin {
             Self::Cloak => "cloak",
             Self::Kcptun => "kcptun",
             Self::V2ray => "v2ray",
-            Self::UnknownPlugin {
+            Self::Unknown {
                 plugin_name,
                 plugin_opts: _,
             } => plugin_name,
@@ -398,7 +398,7 @@ impl Plugin {
 
             Self::GoQuiet | Self::Cloak | Self::Kcptun | Self::V2ray => todo!(),
 
-            Self::UnknownPlugin {
+            Self::Unknown {
                 plugin_name: _,
                 plugin_opts,
             } => plugin_opts.as_ref().map(|map| {
@@ -431,7 +431,7 @@ impl Plugin {
             Self::Cloak => todo!(),
             Self::Kcptun => todo!(),
             Self::V2ray => todo!(),
-            Self::UnknownPlugin {
+            Self::Unknown {
                 plugin_name: _,
                 plugin_opts,
             } => plugin_opts.clone().unwrap_or_default(),

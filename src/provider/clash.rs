@@ -3,7 +3,6 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use http::Uri;
 use serde::{Deserialize, Serialize};
-use serde_yaml::Value;
 
 use crate::node::ss::Method as SsMethod;
 use crate::node::{Node, SsNode, SsrNode};
@@ -111,7 +110,7 @@ impl Provider for Clash {
 #[serde(untagged)]
 enum ImplementedProxyNodeOrUnknownProxyNode {
     Implemented(ClashProxy),
-    Unknown(Value),
+    Unknown(()),
 }
 
 #[derive(Debug, Deserialize)]

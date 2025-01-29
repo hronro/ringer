@@ -77,11 +77,6 @@ impl Adaptor for Surge {
     fn convert_node<'a>(&self, node: &'a Node) -> Option<Self::Node<'a>> {
         match node {
             Node::Ss(ss_node) => {
-                // Surge doesn't support AEAD 2022 cipher for now
-                if ss_node.method.is_aead_2022_cipher() {
-                    return None;
-                }
-
                 let obfs = if let Some(plugin) = &ss_node.plugin {
                     if let SsPlugin::SimpleObfs(obfs_opts) = plugin {
                         Some(obfs_opts)

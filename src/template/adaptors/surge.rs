@@ -27,7 +27,7 @@ pub enum ProxyType<'a> {
         section_name: String,
     },
 }
-impl<'a> Display for ProxyType<'a> {
+impl Display for ProxyType<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Ss {

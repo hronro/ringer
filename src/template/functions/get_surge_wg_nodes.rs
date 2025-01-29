@@ -24,10 +24,10 @@ impl<'a> GetSurgeWgNodes<'a> {
         Self(args)
     }
 }
-impl<'a> RingerFunctions for GetSurgeWgNodes<'a> {
+impl RingerFunctions for GetSurgeWgNodes<'_> {
     const NAME: &'static str = "get_surge_wg_nodes";
 }
-impl<'a> Function for GetSurgeWgNodes<'a> {
+impl Function for GetSurgeWgNodes<'_> {
     fn call(&self, args: &HashMap<String, Value>) -> tera::Result<Value> {
         let nodes = get_filtered_nodes_by_function_args(Self::NAME, self.0, args)?;
 

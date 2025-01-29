@@ -15,10 +15,10 @@ impl<'a> GetNodesNames<'a> {
         Self(args)
     }
 }
-impl<'a> RingerFunctions for GetNodesNames<'a> {
+impl RingerFunctions for GetNodesNames<'_> {
     const NAME: &'static str = "get_nodes_names";
 }
-impl<'a> Function for GetNodesNames<'a> {
+impl Function for GetNodesNames<'_> {
     fn call(&self, args: &HashMap<String, Value>) -> tera::Result<Value> {
         let nodes = get_filtered_nodes_by_function_args(Self::NAME, self.0, args)?;
 

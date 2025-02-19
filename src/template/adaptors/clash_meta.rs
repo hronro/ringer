@@ -4,6 +4,7 @@ use serde_with::skip_serializing_none;
 use serde_yaml::to_string;
 
 use crate::node::hysteria::Speed as HysteriaSpeed;
+use crate::node::hysteria::ServerPort as HysteriaServerPort;
 use crate::node::ss::{ObfsOpts, ObfsType, Plugin as SsPlugin};
 use crate::node::{GetNodeName, Node};
 
@@ -46,6 +47,7 @@ pub enum ClashMetaProxy<'a> {
         name: String,
         server: &'a str,
         port: u16,
+        ports: Option<String>,
         auth_str: Option<&'a str>,
         obfs: Option<&'a str>,
         apln: Option<&'a [String]>,
@@ -228,7 +230,11 @@ impl Adaptor for ClashMeta {
             Node::Hysteria(hysteria_node) => Some(ClashMetaProxy::Hysteria {
                 name: hysteria_node.get_display_name(),
                 server: &hysteria_node.server,
-                port: hysteria_node.port,
+                port: hysteria_node.port.get_start_port(),
+                ports: match &hysteria_node.port {
+                    HysteriaServerPort::Single(_) => None,
+                    HysteriaServerPort::Range(start, end) => Some(format!("{start}-{end}")),
+                },
                 auth_str: hysteria_node.auth.as_deref(),
                 obfs: hysteria_node.obfs.as_deref(),
                 apln: hysteria_node.tls.alpn.as_deref(),

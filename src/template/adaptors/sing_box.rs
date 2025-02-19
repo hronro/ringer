@@ -2,7 +2,7 @@ use serde::Serialize;
 use serde_json::to_string_pretty;
 use serde_with::skip_serializing_none;
 
-use crate::node::{hysteria::Speed as HysteriaSpeed, ss::Plugin as SsPlugin, GetNodeName, Node};
+use crate::node::{hysteria::Speed as HysteriaSpeed, hysteria::ServerPort as HysteriaServerPort, ss::Plugin as SsPlugin, GetNodeName, Node};
 
 use super::Adaptor;
 
@@ -48,7 +48,8 @@ pub enum SingBoxNode<'a> {
     Hysteria {
         tag: String,
         server: &'a str,
-        server_port: u16,
+        server_port: Option<u16>,
+        server_ports: Option<Vec<String>>,
         up: Option<&'a str>,
         up_mbps: Option<u32>,
         down: Option<&'a str>,
@@ -144,7 +145,16 @@ impl Adaptor for SingBox {
             Node::Hysteria(hysteria_node) => Some(SingBoxNode::Hysteria {
                 tag: hysteria_node.get_display_name(),
                 server: &hysteria_node.server,
-                server_port: hysteria_node.port,
+                server_port: match hysteria_node.port {
+                    HysteriaServerPort::Single(port) => Some(port),
+                    _ => None,
+                }, 
+                server_ports: match hysteria_node.port {
+                    HysteriaServerPort::Single(_) => None,
+                    HysteriaServerPort::Range(start, end) => Some(
+                        vec![format!("{start}:{end}")],
+                    ),
+                },
                 up: match &hysteria_node.up {
                     HysteriaSpeed::Text(up) => Some(up),
                     HysteriaSpeed::Mbps(_) => None,

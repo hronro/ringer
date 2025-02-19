@@ -5,13 +5,13 @@ use serde::{Deserialize, Serialize};
 use crate::node::common::TlsOptions;
 
 /// The configuration of a Hysteria node.
-/// Reference: https://hysteria.network/docs/advanced-usage/#client
+/// Reference: https://v1.hysteria.network/docs/advanced-usage/#client
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct HysteriaNode {
     pub remarks: Option<String>,
     pub server: String,
-    pub port: u16,
+    pub port: ServerPort,
     pub protocol: Option<Protocol>,
     pub up: Speed,
     pub down: Speed,
@@ -29,7 +29,38 @@ impl super::GetNodeName for HysteriaNode {
     }
 
     fn get_port(&self) -> u16 {
-        self.port
+        self.port.get_start_port()
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ServerPort {
+    Single(u16),
+    Range(u16, u16),
+}
+impl ServerPort {
+    #[allow(dead_code)]
+    pub fn is_single(&self) -> bool {
+        match self {
+            Self::Single(_) => true,
+            Self::Range(_, _) => false,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn is_range(&self) -> bool {
+        match self {
+            Self::Single(_) => false,
+            Self::Range(_, _) => true,
+        }
+    }
+
+    pub fn get_start_port(&self) -> u16 {
+        match self {
+            Self::Single(port) => *port,
+            Self::Range(start, _) => *start,
+        }
     }
 }
 

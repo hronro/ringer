@@ -2,7 +2,7 @@ use serde::Serialize;
 use serde_json::to_string_pretty;
 use serde_with::skip_serializing_none;
 
-use crate::node::{hysteria::Speed as HysteriaSpeed, hysteria::ServerPort as HysteriaServerPort, ss::Plugin as SsPlugin, GetNodeName, Node};
+use crate::node::{hysteria::Speed as HysteriaSpeed, hysteria::ServerPort as HysteriaServerPort, hysteria2::ServerPort as Hysteria2ServerPort, hysteria2::Obfuscation as Hysteria2Obfuscation, ss::Plugin as SsPlugin, GetNodeName, Node};
 
 use super::Adaptor;
 
@@ -59,6 +59,21 @@ pub enum SingBoxNode<'a> {
         tls: SingBoxTlsOptions<'a>,
     },
 
+    /// Hysteria outbound
+    /// Reference: https://sing-box.sagernet.org/configuration/outbound/hysteria2
+    #[serde(rename = "hysteria2")]
+    Hysteria2 {
+        tag: String,
+        server: &'a str,
+        server_port: Option<u16>,
+        server_ports: Option<Vec<String>>,
+        up_mbps: Option<u32>,
+        down_mbps: Option<u32>,
+        obfs: Option<SingBoxHysteria2Obfuscation>,
+        password: Option<&'a str>,
+        tls: SingBoxTlsOptions<'a>,
+    },
+
     /// Wireguard outbound
     /// Reference: https://sing-box.sagernet.org/configuration/outbound/wireguard
     #[serde(rename = "wireguard")]
@@ -88,6 +103,16 @@ pub struct SingBoxTlsOptions<'a> {
     server_name: Option<&'a str>,
     insecure: Option<bool>,
     alpn: Option<&'a [String]>,
+}
+
+/// Singbox Hysteria2 Obfuscation
+#[derive(Serialize)]
+#[serde(tag = "type")]
+pub enum SingBoxHysteria2Obfuscation {
+    #[serde(rename = "salamander")]
+    Salamander {
+        password: String,
+    }
 }
 
 #[derive(Default)]
@@ -184,6 +209,39 @@ impl Adaptor for SingBox {
                     ),
                     insecure: hysteria_node.tls.insecure,
                     alpn: hysteria_node.tls.alpn.as_deref(),
+                },
+            }),
+
+            Node::Hysteria2(hysteria2_node) => Some(SingBoxNode::Hysteria2 {
+                tag: hysteria2_node.get_display_name(),
+                server: &hysteria2_node.server,
+                server_port: match hysteria2_node.port {
+                    Hysteria2ServerPort::Single(port) => Some(port),
+                    _ => None,
+                }, 
+                server_ports: match hysteria2_node.port {
+                    Hysteria2ServerPort::Single(_) => None,
+                    Hysteria2ServerPort::Range(start, end) => Some(
+                        vec![format!("{start}:{end}")],
+                    ),
+                },
+                up_mbps: hysteria2_node.up.to_mbps(),
+                down_mbps: hysteria2_node.down.to_mbps(),
+                obfs: hysteria2_node.obfs.as_ref().map(|obfs| match obfs {
+                    Hysteria2Obfuscation::Salamander { password } => SingBoxHysteria2Obfuscation::Salamander { password: password.clone() },
+                }),
+                password: hysteria2_node.auth.as_deref(),
+                tls: SingBoxTlsOptions {
+                    enabled: true,
+                    server_name: Some(
+                        hysteria2_node
+                            .tls
+                            .sni
+                            .as_deref()
+                            .unwrap_or(&hysteria2_node.server),
+                    ),
+                    insecure: hysteria2_node.tls.insecure,
+                    alpn: hysteria2_node.tls.alpn.as_deref(),
                 },
             }),
 

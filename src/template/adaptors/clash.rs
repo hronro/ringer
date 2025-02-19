@@ -180,6 +180,8 @@ impl Adaptor for Clash {
 
             Node::Hysteria(_) => None,
 
+            Node::Hysteria2(_) => None,
+
             Node::Wireguard(_) => None,
         }
     }

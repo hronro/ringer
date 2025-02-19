@@ -3,11 +3,13 @@ use serde::{Deserialize, Serialize};
 
 pub mod common;
 pub mod hysteria;
+pub mod hysteria2;
 pub mod ss;
 pub mod ssr;
 pub mod wireguard;
 
 pub use hysteria::HysteriaNode;
+pub use hysteria2::Hysteria2Node;
 pub use ss::SsNode;
 pub use ssr::SsrNode;
 pub use wireguard::WireguardNode;
@@ -53,6 +55,8 @@ pub enum Node {
     Ssr(Box<SsrNode>),
     #[serde(rename = "hysteria")]
     Hysteria(Box<HysteriaNode>),
+    #[serde(rename = "hysteria2")]
+    Hysteria2(Box<Hysteria2Node>),
     #[serde(rename = "wireguard")]
     Wireguard(WireguardNode),
 }

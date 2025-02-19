@@ -23,6 +23,13 @@ pub enum ProxyType<'a> {
         udp_relay: bool,
     },
 
+    Hysteria2 {
+        host: &'a str,
+        port: u16,
+        password: &'a str,
+        download_bandwidth: Option<u32>,
+    },
+
     Wireguard {
         section_name: String,
     },
@@ -55,6 +62,19 @@ impl Display for ProxyType<'_> {
                     if let Some(uri) = &obfs.uri {
                         write!(f, ", obfs-uri={uri}")?;
                     }
+                }
+            }
+
+            Self::Hysteria2 {
+                host,
+                port,
+                password,
+                download_bandwidth,
+            } => {
+                write!(f, "hysteria2, {host}, {port}, password={password}")?;
+
+                if let Some(download_bandwidth) = download_bandwidth {
+                    write!(f, ", download-bandwidth={download_bandwidth}")?;
                 }
             }
 
@@ -105,6 +125,16 @@ impl Adaptor for Surge {
             Node::Ssr(_) => None,
 
             Node::Hysteria(_) => None,
+
+            Node::Hysteria2(hysteria2_node) => Some(SurgeProxy {
+                name: hysteria2_node.get_display_name(),
+                proxy: ProxyType::Hysteria2 {
+                    host: &hysteria2_node.server,
+                    port: hysteria2_node.get_port(),
+                    password: hysteria2_node.auth.as_ref().map_or("", |password| password),
+                    download_bandwidth: hysteria2_node.down.to_mbps(),
+                },
+            }),
 
             Node::Wireguard(wireguard_node) => Some(SurgeProxy {
                 name: wireguard_node.get_display_name(),

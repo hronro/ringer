@@ -3,8 +3,9 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use serde_yaml::to_string;
 
-use crate::node::hysteria::Speed as HysteriaSpeed;
-use crate::node::hysteria::ServerPort as HysteriaServerPort;
+use crate::node::hysteria::{Speed as HysteriaSpeed, ServerPort as HysteriaServerPort};
+use crate::node::hysteria2::{Obfuscation as Hysteria2Obfuscation, Speed as Hysteria2Speed, ServerPort as Hysteria2ServerPort};
+
 use crate::node::ss::{ObfsOpts, ObfsType, Plugin as SsPlugin};
 use crate::node::{GetNodeName, Node};
 
@@ -60,6 +61,23 @@ pub enum ClashMetaProxy<'a> {
         disable_mtu_discovery: Option<bool>,
         fast_open: Option<bool>,
     },
+
+    #[serde(rename = "hysteria", rename_all = "kebab-case")]
+    Hysteria2 {
+        name: String,
+        server: &'a str,
+        port: u16,
+        ports: Option<String>,
+        password: Option<&'a str>,
+        obfs: Option<&'a str>,
+        obfs_password: Option<&'a str>,
+        sni: Option<&'a str>,
+        apln: Option<&'a [String]>,
+        skip_cert_verify: Option<bool>,
+        up: String,
+        down: String,
+    },
+
 
     #[serde(rename = "wireguard", rename_all = "kebab-case")]
     Wireguard {
@@ -251,6 +269,34 @@ impl Adaptor for ClashMeta {
                 skip_cert_verify: hysteria_node.tls.insecure,
                 disable_mtu_discovery: None,
                 fast_open: None,
+            }),
+
+            Node::Hysteria2(hysteria2_node) => Some(ClashMetaProxy::Hysteria2 {
+                name: hysteria2_node.get_display_name(),
+                server: &hysteria2_node.server,
+                port: hysteria2_node.port.get_start_port(),
+                ports: match &hysteria2_node.port {
+                    Hysteria2ServerPort::Single(_) => None,
+                    Hysteria2ServerPort::Range(start, end) => Some(format!("{start}-{end}")),
+                },
+                password: hysteria2_node.auth.as_deref(),
+                obfs: hysteria2_node.obfs.as_ref().map(|obfs| match obfs {
+                    Hysteria2Obfuscation::Salamander { .. } => "salamander",
+                }),
+                obfs_password: hysteria2_node.obfs.as_ref().map(|obfs| match obfs {
+                    Hysteria2Obfuscation::Salamander { password } => password.as_ref(),
+                }),
+                sni: hysteria2_node.tls.sni.as_deref(),
+                apln: hysteria2_node.tls.alpn.as_deref(),
+                skip_cert_verify: hysteria2_node.tls.insecure,
+                up: match &hysteria2_node.up {
+                    Hysteria2Speed::Text(up) => up.clone(),
+                    Hysteria2Speed::Mbps(up) => format!("{up} Mbps"),
+                },
+                down: match &hysteria2_node.down {
+                    Hysteria2Speed::Text(down) => down.clone(),
+                    Hysteria2Speed::Mbps(down) => format!("{down} Mbps"),
+                },
             }),
 
             Node::Wireguard(wireguard_node) => Some(ClashMetaProxy::Wireguard {

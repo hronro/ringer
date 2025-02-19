@@ -19,7 +19,7 @@ jobs:
           - aarch64-unknown-linux-gnu
           - aarch64-unknown-linux-musl
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@1.84
@@ -39,7 +39,7 @@ jobs:
           XZ_OPT=-e9 tar caf ringer.${{ matrix.target }}.tar.xz ringer
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}
           path: ringer.${{ matrix.target }}.tar.xz
@@ -47,7 +47,7 @@ jobs:
   build-macOS:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install GNU tar
         run: |
@@ -67,7 +67,7 @@ jobs:
           XZ_OPT=-e9 tar caf ringer.x86_64-apple-darwin.tar.xz ringer
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: x86_64-apple-darwin
           path: ringer.x86_64-apple-darwin.tar.xz
@@ -75,7 +75,7 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@1.84
@@ -90,7 +90,7 @@ jobs:
           7z a -t7z -mx=9 ringer.x86_64-pc-windows-msvc.7z ringer.exe
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: x86_64-pc-windows-msvc
           path: ringer.x86_64-pc-windows-msvc.7z

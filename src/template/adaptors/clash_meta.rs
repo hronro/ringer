@@ -3,8 +3,10 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use serde_yaml::to_string;
 
-use crate::node::hysteria::{Speed as HysteriaSpeed, ServerPort as HysteriaServerPort};
-use crate::node::hysteria2::{Obfuscation as Hysteria2Obfuscation, ServerPort as Hysteria2ServerPort};
+use crate::node::hysteria::{ServerPort as HysteriaServerPort, Speed as HysteriaSpeed};
+use crate::node::hysteria2::{
+    Obfuscation as Hysteria2Obfuscation, ServerPort as Hysteria2ServerPort,
+};
 
 use crate::node::ss::{ObfsOpts, ObfsType, Plugin as SsPlugin};
 use crate::node::{GetNodeName, Node};
@@ -77,7 +79,6 @@ pub enum ClashMetaProxy<'a> {
         up: Option<String>,
         down: Option<String>,
     },
-
 
     #[serde(rename = "wireguard", rename_all = "kebab-case")]
     Wireguard {

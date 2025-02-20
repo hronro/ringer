@@ -97,13 +97,21 @@ impl Speed {
             Self::Text(text) => {
                 for b in [" bps", "bps", " b", "b"] {
                     if text.ends_with(b) {
-                        return text.trim_end_matches(b).parse::<u64>().ok().map(|n| (n / 1024 / 1024) as u32);
+                        return text
+                            .trim_end_matches(b)
+                            .parse::<u64>()
+                            .ok()
+                            .map(|n| (n / 1024 / 1024) as u32);
                     }
                 }
 
                 for k in [" kbps", "kbps", " kb", "kb", " k", "k"] {
                     if text.ends_with(k) {
-                        return text.trim_end_matches(k).parse::<u64>().ok().map(|n| (n / 1024) as u32);
+                        return text
+                            .trim_end_matches(k)
+                            .parse::<u64>()
+                            .ok()
+                            .map(|n| (n / 1024) as u32);
                     }
                 }
 
@@ -115,18 +123,26 @@ impl Speed {
 
                 for g in [" gbps", "gbps", " gb", "gb", " g", "g"] {
                     if text.ends_with(g) {
-                        return text.trim_end_matches(g).parse::<u32>().ok().map(|n| n * 1024);
+                        return text
+                            .trim_end_matches(g)
+                            .parse::<u32>()
+                            .ok()
+                            .map(|n| n * 1024);
                     }
                 }
 
                 for t in [" tbps", "tbps", " tb", "tb", " t", "t"] {
                     if text.ends_with(t) {
-                        return text.trim_end_matches(t).parse::<u32>().ok().map(|n| n * 1024 * 1024);
+                        return text
+                            .trim_end_matches(t)
+                            .parse::<u32>()
+                            .ok()
+                            .map(|n| n * 1024 * 1024);
                     }
                 }
 
                 None
-            },
+            }
 
             Self::Mbps(mbps) => Some(*mbps),
         }

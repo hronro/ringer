@@ -129,7 +129,14 @@ impl Adaptor for Surge {
             Node::Hysteria2(hysteria2_node) => Some(SurgeProxy {
                 name: hysteria2_node.get_display_name(),
                 proxy: ProxyType::Hysteria2 {
-                    host: &hysteria2_node.server,
+                    // Surge doesn't support manually specify IP address and SNI,
+                    // only host is supported, so first try to use SNI as host,
+                    // then fallback to `server` field.
+                    host: hysteria2_node
+                        .tls
+                        .sni
+                        .as_ref()
+                        .unwrap_or(&hysteria2_node.server),
                     port: hysteria2_node.get_port(),
                     password: hysteria2_node.auth.as_ref().map_or("", |password| password),
                     download_bandwidth: hysteria2_node

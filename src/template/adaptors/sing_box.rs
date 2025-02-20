@@ -225,8 +225,8 @@ impl Adaptor for SingBox {
                         vec![format!("{start}:{end}")],
                     ),
                 },
-                up_mbps: hysteria2_node.up.to_mbps(),
-                down_mbps: hysteria2_node.down.to_mbps(),
+                up_mbps: hysteria2_node.up.as_ref().and_then(|up| up.to_mbps()),
+                down_mbps: hysteria2_node.down.as_ref().and_then(|down| down.to_mbps()),
                 obfs: hysteria2_node.obfs.as_ref().map(|obfs| match obfs {
                     Hysteria2Obfuscation::Salamander { password } => SingBoxHysteria2Obfuscation::Salamander { password: password.clone() },
                 }),

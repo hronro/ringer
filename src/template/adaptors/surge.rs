@@ -132,7 +132,10 @@ impl Adaptor for Surge {
                     host: &hysteria2_node.server,
                     port: hysteria2_node.get_port(),
                     password: hysteria2_node.auth.as_ref().map_or("", |password| password),
-                    download_bandwidth: hysteria2_node.down.to_mbps(),
+                    download_bandwidth: hysteria2_node
+                        .down
+                        .as_ref()
+                        .and_then(|down| down.to_mbps()),
                 },
             }),
 

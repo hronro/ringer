@@ -12,8 +12,8 @@ pub struct Hysteria2Node {
     pub port: ServerPort,
     pub auth: Option<String>,
     pub obfs: Option<Obfuscation>,
-    pub up: Speed,
-    pub down: Speed,
+    pub up: Option<Speed>,
+    pub down: Option<Speed>,
     pub tls: TlsOptions,
 }
 impl super::GetNodeName for Hysteria2Node {

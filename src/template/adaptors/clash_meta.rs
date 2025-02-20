@@ -4,7 +4,7 @@ use serde_with::skip_serializing_none;
 use serde_yaml::to_string;
 
 use crate::node::hysteria::{Speed as HysteriaSpeed, ServerPort as HysteriaServerPort};
-use crate::node::hysteria2::{Obfuscation as Hysteria2Obfuscation, Speed as Hysteria2Speed, ServerPort as Hysteria2ServerPort};
+use crate::node::hysteria2::{Obfuscation as Hysteria2Obfuscation, ServerPort as Hysteria2ServerPort};
 
 use crate::node::ss::{ObfsOpts, ObfsType, Plugin as SsPlugin};
 use crate::node::{GetNodeName, Node};
@@ -74,8 +74,8 @@ pub enum ClashMetaProxy<'a> {
         sni: Option<&'a str>,
         apln: Option<&'a [String]>,
         skip_cert_verify: Option<bool>,
-        up: String,
-        down: String,
+        up: Option<String>,
+        down: Option<String>,
     },
 
 
@@ -289,14 +289,8 @@ impl Adaptor for ClashMeta {
                 sni: hysteria2_node.tls.sni.as_deref(),
                 apln: hysteria2_node.tls.alpn.as_deref(),
                 skip_cert_verify: hysteria2_node.tls.insecure,
-                up: match &hysteria2_node.up {
-                    Hysteria2Speed::Text(up) => up.clone(),
-                    Hysteria2Speed::Mbps(up) => format!("{up} Mbps"),
-                },
-                down: match &hysteria2_node.down {
-                    Hysteria2Speed::Text(down) => down.clone(),
-                    Hysteria2Speed::Mbps(down) => format!("{down} Mbps"),
-                },
+                up: hysteria2_node.up.as_ref().map(|up| up.to_text()),
+                down: hysteria2_node.down.as_ref().map(|down| down.to_text()),
             }),
 
             Node::Wireguard(wireguard_node) => Some(ClashMetaProxy::Wireguard {

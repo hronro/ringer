@@ -312,13 +312,10 @@ impl ConfigFileTemplate {
         let file_name = self.file_name.map(Ok).unwrap_or_else(|| {
             self.path
                 .split('/')
-                .last()
+                .next_back()
                 .map(String::from)
                 .ok_or_else(|| {
-                    anyhow!(
-                        "can not infer template file name from path `{}`",
-                        self.path.to_string()
-                    )
+                    anyhow!("can not infer template file name from path `{}`", self.path)
                 })
         })?;
 

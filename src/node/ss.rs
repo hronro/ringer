@@ -36,23 +36,18 @@ impl SsNode {
     pub fn from_url(url: &Url) -> Result<Self> {
         let server = url
             .host_str()
-            .ok_or_else(|| anyhow!("SS link `{}` does not contain server.", url.to_string()))?
+            .ok_or_else(|| anyhow!("SS link `{}` does not contain server.", url))?
             .to_string();
 
         let server_port = url
             .port()
-            .ok_or_else(|| anyhow!("SS link {} does not contain port.", url.to_string()))?;
+            .ok_or_else(|| anyhow!("SS link {} does not contain port.", url))?;
 
         let (method, password) = if let Some(password) = url.password() {
             // if password exists, means userinfo is not encoded with Base64URL.
             let method_str = percent_decode_str(url.username()).decode_utf8_lossy();
-            let method = Method::from_alias(&method_str).ok_or_else(|| {
-                anyhow!(
-                    "Unknown method `{}` in SS link `{}`",
-                    method_str,
-                    url.to_string()
-                )
-            })?;
+            let method = Method::from_alias(&method_str)
+                .ok_or_else(|| anyhow!("Unknown method `{}` in SS link `{}`", method_str, url))?;
             let password = percent_decode_str(password).decode_utf8_lossy().to_string();
             (method, password)
         } else {
@@ -67,18 +62,13 @@ impl SsNode {
 
             let method_str = ss_userinfo_parts
                 .next()
-                .ok_or_else(|| anyhow!("SS link `{}` does not contain method.", url.to_string()))?;
-            let password = ss_userinfo_parts.next().ok_or_else(|| {
-                anyhow!("SS link `{}` does not contain password.", url.to_string())
-            })?;
+                .ok_or_else(|| anyhow!("SS link `{}` does not contain method.", url))?;
+            let password = ss_userinfo_parts
+                .next()
+                .ok_or_else(|| anyhow!("SS link `{}` does not contain password.", url))?;
 
-            let method = Method::from_alias(method_str).ok_or_else(|| {
-                anyhow!(
-                    "Unknown method `{}` in SS link `{}`",
-                    method_str,
-                    url.to_string()
-                )
-            })?;
+            let method = Method::from_alias(method_str)
+                .ok_or_else(|| anyhow!("Unknown method `{}` in SS link `{}`", method_str, url))?;
 
             (method, password.to_string())
         };
@@ -91,7 +81,7 @@ impl SsNode {
             let mut plugin_arg_parts = plugin_arg.split(';');
             let plugin_str = plugin_arg_parts
                 .next()
-                .ok_or_else(|| anyhow!("SS link `{}` does not contain plugin.", url.to_string()))?;
+                .ok_or_else(|| anyhow!("SS link `{}` does not contain plugin.", url))?;
 
             let plugin_opts = plugin_arg_parts
                 .filter_map(|plugin_arg_str| {

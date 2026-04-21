@@ -28,7 +28,7 @@ impl SsrNode {
     /// ssr://base64(host:port:protocol:method:obfs:base64pass/?obfsparam=base64param&protoparam=base64param&remarks=base64remarks&group=base64group&udpport=0&uot=0)
     /// ```
     pub fn from_url(url: &Url) -> Result<Self> {
-        trace!("SSR link: {}", url.to_string());
+        trace!("SSR link: {}", url);
         if let Some(encoded_content) = url.host() {
             let decoded_host_bytes = base64_url_no_pad
                 .decode_to_vec(encoded_content.to_string())
